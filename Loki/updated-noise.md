@@ -1,5 +1,12 @@
 # Log Sampling & Noise Reduction — Loki + Fluent Bit
 
+## 0. Relevant Deployment Context
+
+- **Deployment mode:** `Distributed` — ingester, querier, distributor, query-frontend, compactor, index-gateway all run as separate components, which is why cross-component tracing (Section 7) matters.
+- **Retention:** `retention_period: 8h` with compactor `retention_enabled: true` — logs are short-lived by design, reinforcing that this is a debugging/troubleshooting store, not long-term audit storage. Noise reduction upstream matters more when retention is short and ingest rate must stay within limits.
+- **Ingestion limits:** `ingestion_rate_mb: 32`, `ingestion_burst_size_mb: 32`, `per_stream_rate_limit: 10MB`. Unfiltered INFO/DEBUG/health noise risks hitting these caps and getting rate-limited/rejected by Loki — the Fluent Bit filters exist partly to stay under them.
+- **Storage backend:** S3-compatible (MinIO) via `commonStorageConfig.s3` — every log line shipped has a direct object-storage cost, another reason to filter at the agent rather than store-then-discard.
+
 ## 1. Grep Filter — Drop INFO/DEBUG/Health logs
 
 ```
@@ -19,6 +26,46 @@
 - Lower query cost (less irrelevant data scanned).
 
 **Requirement:** This filter only works correctly if `Merge_Log On` is set in the `kubernetes` filter. Without merge, the parsed `log_level` field doesn't exist as a top-level key, and the grep filter has nothing to match against — the exclude rules silently no-op.
+
+### 1.1 Additional Grep Filters — Drop by Namespace / Pod / Service / Regex
+
+`grep` isn't limited to `log_level`. It can match/exclude on **any parsed key**, including Kubernetes metadata injected by the `kubernetes` filter (`$kubernetes['labels'][...]`, `$kubernetes['namespace_name']`, `$kubernetes['pod_name']`, etc.) and on **regex patterns**, not just exact strings.
+
+**Example — drop logs from a specific app/namespace/pod:**
+
+```
+[FILTER]
+    Name    grep
+    Match   kube.*
+    Exclude $kubernetes['labels']['app']         staging-load-test
+    Exclude $kubernetes['namespace_name']        kube-system
+    Exclude $kubernetes['pod_name']              ^loadgen-.*
+    Exclude $kubernetes['labels']['app']         ^(healthcheck|metrics-exporter)$
+```
+
+- `Exclude $kubernetes['labels']['app'] staging-load-test` → drops all logs from the app labeled `staging-load-test` (e.g. a noisy load-test deployment we don't care about in prod logs).
+- `Exclude $kubernetes['namespace_name'] kube-system` → drops all system-namespace noise (kubelet, CNI, etc.) if it isn't relevant to app-level observability.
+- `Exclude $kubernetes['pod_name'] ^loadgen-.*` → **regex** match, drops any pod whose name starts with `loadgen-` (covers all replicas without listing each pod name).
+- `Exclude $kubernetes['labels']['app'] ^(healthcheck|metrics-exporter)$` → regex alternation, drops multiple known-noisy services in one rule.
+
+**Why this matters:** `grep` exclude rules aren't limited to log content/level — they can target **any label dimension** (namespace, pod, service/app name) and can use **regex** instead of exact match, so you can drop whole classes of known-noisy workloads (test/synthetic traffic, system namespaces, specific services) without touching application code or waiting on a log-level fix.
+
+### 1.2 Regex on Log Content Itself — Drop a Specific Log Line/Pattern
+
+Same as the existing `Exclude log /api/v1/health` rule — `grep` regex can also match directly on the **log message text**, not just labels. This is useful when a specific noisy line/endpoint keeps showing up in logs and needs to be dropped, regardless of which pod/namespace it comes from.
+
+```
+[FILTER]
+    Name    grep
+    Match   kube.*
+    Exclude log    /api/v1/logs
+```
+
+- Yeh rule kisi bhi log line ko drop kar dega jisme `/api/v1/logs` string/pattern match ho jaaye — chahe wo kis bhi pod/namespace se aaya ho.
+- Regex bhi chalega, e.g. `Exclude log /api/v1/(logs|health|metrics).*` — ek hi rule me multiple noisy endpoints cover ho jaate hain.
+- Match sirf substring nahi, pura regex engine hai — so partial URL, query params ke saath bhi, ya specific status code jaise `Exclude log status=200.*GET /ping` bhi possible hai.
+
+**Note:** `log` field pe match tabhi kaam karega jab `Merge_Log On` ho (Section 1's requirement) — warna raw JSON blob me regex reliably match nahi karega.
 
 ## 2. Lua Sampling Filter — Probabilistic Sampling
 
@@ -40,6 +87,35 @@
 - Random sampling is stateless per-line — no need to track windows/counters in the agent, which keeps Fluent Bit lightweight.
 
 **Impact on Loki:** Further reduces cardinality/volume without fully blinding you to a log category — you retain a representative sample for debugging trends, instead of zero visibility.
+
+**Actual script (`sampling.lua`):**
+
+```lua
+function sample_info(tag, timestamp, record)
+  local level = record["log_level"]
+  if not level then
+    return 0, 0, 0
+  end
+  if level == "INFO" then
+    if math.random() < 0.9 then
+      return -1, 0, 0
+    end
+  elseif level == "DEBUG" then
+    if math.random() < 0.95 then
+      return -1, 0, 0
+    end
+  end
+  return 0, 0, 0
+end
+```
+
+**Logic:**
+- No `log_level` field → record passed through unchanged (`return 0,0,0`). This is why `Merge_Log On` matters here too — without it, `record["log_level"]` is nil and sampling never triggers.
+- `log_level == "INFO"` → 90% chance of drop (`return -1,0,0` = drop record).
+- `log_level == "DEBUG"` → 95% chance of drop.
+- Any other level (WARN, ERROR, etc.) → always kept, unaffected by sampling.
+
+This runs *after* the grep filter as a second layer — grep already excludes INFO/DEBUG entirely in this config, so in practice this Lua filter acts as a safety net for any INFO/DEBUG lines that bypass grep (e.g. mismatched label casing) or is ready to take over sampling duty if the exclude rules are relaxed later.
 
 ## 3. Why This Cannot Be Done Server-Side (Loki)
 
