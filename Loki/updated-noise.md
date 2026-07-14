@@ -165,3 +165,7 @@ Aggregating/rolling up logs server-side is intentionally avoided. Aggregation sh
 - **Increased memory usage** — aggregation requires buffering/state (counting, grouping) in the agent or pipeline, raising memory footprint versus simple stateless filtering/sampling.
 
 Keeping raw (sampled) logs intact in Loki and aggregating only at query time preserves the ability to drill into any individual event while still getting rollup views when needed.
+
+
+## Refrence docs
+https://docs.fluentbit.io/manual/data-pipeline/filters/grep#fluent-bit.conf
