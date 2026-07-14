@@ -1,11 +1,5 @@
 # Log Sampling & Noise Reduction — Loki + Fluent Bit
 
-## 0. Relevant Deployment Context
-
-- **Deployment mode:** `Distributed` — ingester, querier, distributor, query-frontend, compactor, index-gateway all run as separate components, which is why cross-component tracing (Section 7) matters.
-- **Retention:** `retention_period: 8h` with compactor `retention_enabled: true` — logs are short-lived by design, reinforcing that this is a debugging/troubleshooting store, not long-term audit storage. Noise reduction upstream matters more when retention is short and ingest rate must stay within limits.
-- **Ingestion limits:** `ingestion_rate_mb: 32`, `ingestion_burst_size_mb: 32`, `per_stream_rate_limit: 10MB`. Unfiltered INFO/DEBUG/health noise risks hitting these caps and getting rate-limited/rejected by Loki — the Fluent Bit filters exist partly to stay under them.
-- **Storage backend:** S3-compatible (MinIO) via `commonStorageConfig.s3` — every log line shipped has a direct object-storage cost, another reason to filter at the agent rather than store-then-discard.
 
 ## 1. Grep Filter — Drop INFO/DEBUG/Health logs
 
