@@ -159,3 +159,7 @@ stringData:
 
 **Net effect:** This CronJob acts as Loki's missing "tiering" mechanism — periodically archiving chunk data from local PVC storage out to object storage, since Loki has no native way to do this on its own.
 
+
+<img width="3360" height="1930" alt="image" src="https://github.com/user-attachments/assets/e7b7ffc2-987b-47ef-bd86-25cb9b99316b" />
+
+
