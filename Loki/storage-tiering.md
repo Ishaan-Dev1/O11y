@@ -1,4 +1,4 @@
-# Storage Tiering in Loki
+# External Storage Tiering for Loki
 
 ## 1. Loki Does Not Support Storage Tiering Natively
 
