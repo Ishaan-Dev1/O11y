@@ -55,11 +55,11 @@ Same as the existing `Exclude log /api/v1/health` rule — `grep` regex can also
     Exclude log    /api/v1/logs
 ```
 
-- Yeh rule kisi bhi log line ko drop kar dega jisme `/api/v1/logs` string/pattern match ho jaaye — chahe wo kis bhi pod/namespace se aaya ho.
-- Regex bhi chalega, e.g. `Exclude log /api/v1/(logs|health|metrics).*` — ek hi rule me multiple noisy endpoints cover ho jaate hain.
-- Match sirf substring nahi, pura regex engine hai — so partial URL, query params ke saath bhi, ya specific status code jaise `Exclude log status=200.*GET /ping` bhi possible hai.
+- This rule drops any log line where the string/pattern /api/v1/logs appears — regardless of which pod or namespace it came from.
+- Regex works too, e.g. Exclude log /api/v1/(logs|health|metrics).* — a single rule can cover multiple noisy endpoints at once.
+- The match isn't limited to a plain substring — it's a full regex engine, so you can also match partial URLs with query params, or something like a specific status code, e.g. Exclude log status=200.*GET /ping.
 
-**Note:** `log` field pe match tabhi kaam karega jab `Merge_Log On` ho (Section 1's requirement) — warna raw JSON blob me regex reliably match nahi karega.
+**Note:** matching on the log field only works when Merge_Log On is set (same requirement as Section 1) — otherwise the regex won't reliably match against the raw JSON blob.
 
 ## 2. Lua Sampling Filter — Probabilistic Sampling
 
