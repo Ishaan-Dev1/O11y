@@ -140,6 +140,31 @@ Loki Canary identifies **that a problem exists**, while component metrics help i
 
 ---
 
+# Why Is Loki Canary an Early Warning System?
+
+Loki Canary continuously generates synthetic logs at a fixed interval and verifies that they can be successfully written to and retrieved from Loki.
+
+Unlike application logs, which depend on application activity, Canary is always producing traffic. This allows it to continuously validate the health of the logging pipeline.
+
+As a result, if the logging pipeline starts failing, Canary can detect the issue immediately and trigger an alert—even if no application has yet produced logs or no user has noticed that logs are missing.
+
+Example:
+
+```text
+10:00:00  Canary sends a synthetic log
+10:00:02  Ingester starts failing
+10:00:10  Canary cannot retrieve its log
+10:00:10  Alert is triggered
+10:05:00  An application generates a log
+10:05:00  Users notice application logs are missing
+```
+
+In this example, the issue is detected several minutes before users realize their application logs are unavailable.
+
+> **Note:** Loki Canary does not prevent application log loss or guarantee alerts before every application is affected. It simply provides continuous synthetic monitoring, allowing logging pipeline issues to be detected as early as possible.
+
+---
+
 # Impact on the Cluster
 
 Loki Canary generates a very small amount of traffic.
@@ -186,24 +211,7 @@ Enabling Loki Canary provides:
 - End-user perspective of Loki availability
 - Confidence that logs are being successfully ingested and queried
 
----
 
-# Should We Enable Loki Canary?
-
-## Recommendation
-
-**Yes, if Loki is a production-critical service.**
-
-Loki Canary is recommended for production environments where multiple applications or teams rely on the logging platform. It provides continuous synthetic monitoring and can detect pipeline failures before users notice missing logs.
-
-Enable Loki Canary if:
-
-- Loki is used by multiple teams or applications.
-- You want proactive alerting instead of reactive troubleshooting.
-- You need to monitor the overall health of the logging service.
-- You want end-to-end validation that logs can be ingested and queried successfully.
-
-It may not be necessary for development or test environments where synthetic monitoring is not required.
 
 ---
 
@@ -215,7 +223,7 @@ It may not be necessary for development or test environments where synthetic mon
 |------------|-------------|
 | Overall pipeline health | ✅ Yes |
 | End-to-end pipeline latency | ✅ Yes |
-| Missing log detection | ✅ Yes |
+| Missing log detection of the overall pipeline not on the component level | ✅ Yes |
 | End-to-end write/read verification | ✅ Yes |
 | Gateway health | ❌ No |
 | Distributor health | ❌ No |
@@ -232,7 +240,7 @@ It may not be necessary for development or test environments where synthetic mon
 |----------|-----------|
 | End-to-end pipeline health | ✅ |
 | End-to-end latency | ✅ |
-| Missing log detection | ✅ |
+| Missing log detection of overall pipeline not the component level| ✅ |
 | Alerting capability | ✅ |
 | Continuous synthetic monitoring | ✅ |
 | Root cause analysis | ❌ |
