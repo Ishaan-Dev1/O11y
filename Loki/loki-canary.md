@@ -10,7 +10,7 @@ Unlike infrastructure metrics that only show whether Loki components are running
 
 # Why Use Loki Canary?
 
-Loki Canary acts as an **early warning and alerting system** for your logging platform.
+Loki Canary acts as a **synthetic monitoring and early warning system** for your logging platform.
 
 Instead of waiting for users to report that logs are missing, Canary continuously checks whether the logging pipeline is working correctly and exposes metrics that can be used for alerting.
 
@@ -188,7 +188,45 @@ Enabling Loki Canary provides:
 
 ---
 
+# Should We Enable Loki Canary?
+
+## Recommendation
+
+**Yes, if Loki is a production-critical service.**
+
+Loki Canary is recommended for production environments where multiple applications or teams rely on the logging platform. It provides continuous synthetic monitoring and can detect pipeline failures before users notice missing logs.
+
+Enable Loki Canary if:
+
+- Loki is used by multiple teams or applications.
+- You want proactive alerting instead of reactive troubleshooting.
+- You need to monitor the overall health of the logging service.
+- You want end-to-end validation that logs can be ingested and queried successfully.
+
+It may not be necessary for development or test environments where synthetic monitoring is not required.
+
+---
+
 # Summary
+
+> **Loki Canary provides end-to-end pipeline health and latency, not component-level health or latency.**
+
+| Capability | Loki Canary |
+|------------|-------------|
+| Overall pipeline health | ✅ Yes |
+| End-to-end pipeline latency | ✅ Yes |
+| Missing log detection | ✅ Yes |
+| End-to-end write/read verification | ✅ Yes |
+| Gateway health | ❌ No |
+| Distributor health | ❌ No |
+| Ingester health | ❌ No |
+| Querier health | ❌ No |
+| Component-wise latency | ❌ No |
+| Root cause analysis | ❌ No |
+
+---
+
+# Feature Summary
 
 | Feature | Supported |
 |----------|-----------|
@@ -208,6 +246,10 @@ Enabling Loki Canary provides:
 
 Loki Canary is **not a troubleshooting tool**.
 
-It is a **synthetic monitoring and alerting system** that continuously verifies whether Loki is functioning correctly.
+It is a **synthetic monitoring and early warning system** that continuously verifies whether the logging pipeline is functioning correctly from an end-user's perspective.
 
-Think of it as the first indicator that something is wrong. Once an alert is triggered, the Loki component metrics and dashboards are used to identify the exact root cause.
+It tells you **that the logging pipeline is unhealthy**, but it does **not** identify which component is responsible. Once Canary detects an issue, the Loki component dashboards (Gateway, Distributor, Ingester, Querier, Storage, etc.) should be used to identify the root cause.
+
+In short:
+
+> **Loki Canary tells you whether the entire logging pipeline is healthy and how long it takes for a log to be written and retrieved, but it does not identify which Loki component is unhealthy or causing the latency.**
