@@ -354,7 +354,122 @@ For a new platform (e.g. EKS), copy `values-gke.yaml` → `values-eks.yaml` and 
 
 ---
 
-## 9. Useful commands
+## 9. Deep dive: `values-gke.yaml` — what you can edit and what it does
+
+`values-gke.yaml` is a **per-environment override file**. It holds only GKE-specific settings and is merged **on top of** the platform-neutral `values.yaml` (`-f values.yaml -f values-gke.yaml`, later file wins). Nothing here is required to run Grafana — every key is a "pin this component to this node pool / disk / service type" instruction for GKE.
+
+Below is each block, what you can edit, and what it does.
+
+### `grafana.nodeSelector`
+
+```yaml
+nodeSelector:
+  cloud.google.com/gke-nodepool: obs-node-pool
+```
+
+- **Edit**: the node-pool name (`obs-node-pool`) to the name of your GKE pool.
+- **What it does**: tells the Kubernetes scheduler to place the Grafana pod **only** on nodes labeled `cloud.google.com/gke-nodepool: obs-node-pool`. If that pool doesn't exist, the pod stays `Pending` forever — so match it to a real pool in your cluster.
+
+### `grafana.tolerations`
+
+```yaml
+tolerations:
+  - key: "workload"
+    operator: "Equal"
+    value: "observability"
+    effect: "NoSchedule"
+```
+
+- **Edit**: `key` / `value` / `effect` to match the **taint** you put on your node pool.
+- **What it does**: "tolerates" the taint so the pod is *allowed* onto those nodes. Combined with the `nodeSelector` above this pins observability workloads to a dedicated, tainted pool and keeps other workloads off it. `NoSchedule` = pool already rejects non-tolerating pods; this line re-admits ours.
+
+### `grafana.service`
+
+```yaml
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 3000
+  sessionAffinity: ClientIP
+```
+
+- **Edit**: `type` (`LoadBalancer` → `ClusterIP`/`NodePort` for internal use), `port` (exposed port), or add annotations (e.g. `networking.gke.io/load-balancer-type: Internal`, static IP, `cloud.google.com/load-balancer-type`).
+- **What it does**:
+  - `type: LoadBalancer` → GCP provisions an **L4 load balancer** and gives the `grafana` service a **public external IP**. You reach the UI at `http://<LB-IP>:80`.
+  - `port: 80` → external port; `targetPort: 3000` → Grafana's container port the LB forwards to.
+  - `sessionAffinity: ClientIP` → a client's requests stick to the same backend pod (important once you run >1 Grafana replica).
+
+> If you don't want a public IP, switch to `type: ClusterIP` (in-cluster only) or add the `networking.gke.io/load-balancer-type: Internal` annotation for a private LB. The ingress path in section 5 works alongside or instead of this.
+
+### `valkey.nodeSelector` / `valkey.tolerations`
+
+```yaml
+valkey:
+  nodeSelector:
+    cloud.google.com/gke-nodepool: obs-node-pool
+  tolerations:
+    - key: "workload"
+      operator: "Equal"
+      value: "observability"
+      effect: "NoSchedule"
+```
+
+Same pinning as Grafana, applied to the **Valkey cache** pod — same edit rules, same meaning (scheduled only on `obs-node-pool`, tolerant of the taint).
+
+### `valkey.dataStorage.className`
+
+```yaml
+dataStorage:
+  className: standard-rwo
+```
+
+- **Edit**: the storage class for Valkey's 5Gi volume (`standard-rwo` = SSD pd-balanced in GKE; `standard` = HDD, `pd-ssd` = premium SSD, or a custom class).
+- **What it does**: picks the **disk type** behind Valkey's PVC. Faster class = lower latency but higher cost; slower class is cheaper. `standard-rwo` is the sensible GKE default for a cache.
+
+### `postgres.primary.nodeSelector` / `postgres.primary.tolerations`
+
+```yaml
+postgres:
+  primary:
+    nodeSelector:
+      cloud.google.com/gke-nodepool: obs-node-pool
+    tolerations:
+      - key: "workload"
+        operator: "Equal"
+        value: "observability"
+        effect: "NoSchedule"
+```
+
+Same pinning, applied to the **PostgreSQL** pod — same edit rules as Grafana/Valkey. Keeps all three components on the same dedicated pool.
+
+### `postgres.primary.persistence.storageClass`
+
+```yaml
+persistence:
+  storageClass: standard-rwo
+```
+
+- **Edit**: the storage class for Postgres' 5Gi data volume.
+- **What it does**: same as Valkey above — chooses the disk type that holds Grafana's database. Because Postgres holds real data, this is where you'd want `standard-rwo` or better (not `standard`).
+
+---
+
+### What you'd typically change per environment
+
+| Setting | Where | Typical edit |
+|---|---|---|
+| Node pool name | `*.nodeSelector` (grafana, valkey, postgres) | Rename `obs-node-pool` to match your pool |
+| Taint key/value | `*.tolerations` | Match your pool's taint |
+| External vs internal access | `grafana.service.type` + annotations | `LoadBalancer` vs `ClusterIP` / Internal-LB annotation |
+| Disk type / speed | `valkey.dataStorage.className`, `postgres...persistence.storageClass` | `standard` ↔ `standard-rwo` ↔ `pd-ssd` |
+| Grafana replicas / autoscaling | `values.yaml` (`grafana.replicas`, `grafana.autoscaling`) | Keep shared-Postgres backend in mind |
+| Resources / limits | `values.yaml` (`grafana.resources`, `valkey.resources`, `postgres...resources`) | Sizing per traffic |
+
+> `values-gke.yaml` deliberately does **not** contain datasources, `grafana.ini`, or credentials — those stay in `values.yaml` so they're identical everywhere. If you ever need different datasources on a specific platform, override the **whole** `datasources.list` block (it isn't merged key-by-key — see section 6).
+
+---
+
+## 10. Useful commands
 
 ```bash
 # See rendered manifests without applying
