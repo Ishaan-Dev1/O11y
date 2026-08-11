@@ -79,7 +79,7 @@ helm dependency update .
 # Namespace
 kubectl create namespace observability
 
-# GKE (production-style: nodepool scheduling, LoadBalancer, standard-rwo)
+# GKE (production-style: nodepool scheduling, standard-rwo)
 helm upgrade --install grafana . -n observability \
   -f values.yaml -f values-gke.yaml
 
@@ -345,18 +345,18 @@ Then you can query e.g. `redis_used_memory_bytes`, `redis_connected_clients`, `r
 
 | File | Platform | Key differences |
 |---|---|---|
-| `values-gke.yaml` | GKE | `obs-node-pool` nodeSelector, tolerations, LoadBalancer service, `standard-rwo` storage |
+| `values-gke.yaml` | GKE | `obs-node-pool` nodeSelector, tolerations, `standard-rwo` storage |
 | `values-minikube.yaml` | Minikube | NodePort (`30080`), `standard` storage |
 
 > Note: helm merges values files, but an empty map `{}` does **not** clear a value from an earlier file — use `null` instead.
 
-For a new platform (e.g. EKS), copy `values-gke.yaml` → `values-eks.yaml` and change the nodeSelector/tolerations/storageClass/service to match.
+For a new platform (e.g. EKS), copy `values-gke.yaml` → `values-eks.yaml` and change the nodeSelector/tolerations/storageClass to match.
 
 ---
 
 ## 9. Deep dive: `values-gke.yaml` — what you can edit and what it does
 
-`values-gke.yaml` is a **per-environment override file**. It holds only GKE-specific settings and is merged **on top of** the platform-neutral `values.yaml` (`-f values.yaml -f values-gke.yaml`, later file wins). Nothing here is required to run Grafana — every key is a "pin this component to this node pool / disk / service type" instruction for GKE.
+`values-gke.yaml` is a **per-environment override file**. It holds only GKE-specific settings and is merged **on top of** the platform-neutral `values.yaml` (`-f values.yaml -f values-gke.yaml`, later file wins). Nothing here is required to run Grafana — every key is a "pin this component to this node pool / disk" instruction for GKE.
 
 Below is each block, what you can edit, and what it does.
 
@@ -382,24 +382,6 @@ tolerations:
 
 - **Edit**: `key` / `value` / `effect` to match the **taint** you put on your node pool.
 - **What it does**: "tolerates" the taint so the pod is *allowed* onto those nodes. Combined with the `nodeSelector` above this pins observability workloads to a dedicated, tainted pool and keeps other workloads off it. `NoSchedule` = pool already rejects non-tolerating pods; this line re-admits ours.
-
-### `grafana.service`
-
-```yaml
-service:
-  type: LoadBalancer
-  port: 80
-  targetPort: 3000
-  sessionAffinity: ClientIP
-```
-
-- **Edit**: `type` (`LoadBalancer` → `ClusterIP`/`NodePort` for internal use), `port` (exposed port), or add annotations (e.g. `networking.gke.io/load-balancer-type: Internal`, static IP, `cloud.google.com/load-balancer-type`).
-- **What it does**:
-  - `type: LoadBalancer` → GCP provisions an **L4 load balancer** and gives the `grafana` service a **public external IP**. You reach the UI at `http://<LB-IP>:80`.
-  - `port: 80` → external port; `targetPort: 3000` → Grafana's container port the LB forwards to.
-  - `sessionAffinity: ClientIP` → a client's requests stick to the same backend pod (important once you run >1 Grafana replica).
-
-> If you don't want a public IP, switch to `type: ClusterIP` (in-cluster only) or add the `networking.gke.io/load-balancer-type: Internal` annotation for a private LB. The ingress path in section 5 works alongside or instead of this.
 
 ### `valkey.nodeSelector` / `valkey.tolerations`
 
@@ -460,7 +442,6 @@ persistence:
 |---|---|---|
 | Node pool name | `*.nodeSelector` (grafana, valkey, postgres) | Rename `obs-node-pool` to match your pool |
 | Taint key/value | `*.tolerations` | Match your pool's taint |
-| External vs internal access | `grafana.service.type` + annotations | `LoadBalancer` vs `ClusterIP` / Internal-LB annotation |
 | Disk type / speed | `valkey.dataStorage.className`, `postgres...persistence.storageClass` | `standard` ↔ `standard-rwo` ↔ `pd-ssd` |
 | Grafana replicas / autoscaling | `values.yaml` (`grafana.replicas`, `grafana.autoscaling`) | Keep shared-Postgres backend in mind |
 | Resources / limits | `values.yaml` (`grafana.resources`, `valkey.resources`, `postgres...resources`) | Sizing per traffic |
