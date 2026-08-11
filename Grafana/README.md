@@ -211,7 +211,75 @@ datasources:
 helm upgrade --install grafana . -n observability -f values.yaml -f values-prod.yaml
 ```
 
-Any datasource type Grafana supports (prometheus, loki, tempo, elasticsearch, mysql, etc.) can be added with the same shape (`name`, `uid`, `type`, `url`, `isDefault`).
+### Adding other datasources (ClickHouse, MySQL, Elasticsearch, ...)
+
+The datasource template (`templates/datasources.yaml`) is **generic** — no template changes needed to add any datasource type. Beyond `name` / `uid` / `type` / `url` / `isDefault`, every entry supports:
+
+| Field | Purpose |
+|---|---|
+| `user` / `database` | Login + default database (MySQL, ClickHouse, Postgres, ...) |
+| `basicAuth`, `basicAuthUser` | HTTP basic auth (e.g. Loki, VictoriaMetrics behind auth) |
+| `withCredentials` | Send cookies / auth headers to the target |
+| `access` | `proxy` (default) or `direct` |
+| `jsonData` | Merged under the built-in `timeout: 300` — plugin/type-specific settings |
+| `secureJsonData` | Secrets (passwords, tokens) rendered into the ConfigMap |
+| `config` | Any other top-level keys, passed through verbatim |
+| `tracesToLogs` / `tracesToMetrics` | Correlation to other datasources by `uid` |
+
+> Note: `secureJsonData` is stored in the ConfigMap as plaintext (like every file-based Grafana provisioning setup). For truly sensitive passwords, prefer a full datasource secret + provisioning setup.
+
+**Example — ClickHouse** (plugin `grafana-clickhouse-datasource` must be in `grafana.plugins`):
+
+```yaml
+grafana:
+  plugins:
+    - grafana-clickhouse-datasource
+
+datasources:
+  list:
+    - name: clickhouse
+      uid: clickhouse
+      type: grafana-clickhouse-datasource
+      url: http://clickhouse.observability.svc.cluster.local:8123
+      isDefault: false
+      user: default
+      database: default
+      jsonData:
+        protocol: native
+        port: 9000
+      secureJsonData:
+        password: "changeme"
+```
+
+**Example — MySQL**:
+
+```yaml
+datasources:
+  list:
+    - name: mysql
+      uid: mysql
+      type: mysql
+      url: mysql.observability.svc.cluster.local:3306
+      user: grafana
+      database: myapp
+      jsonData:
+        maxOpenConns: 100
+        sslmode: disable
+      secureJsonData:
+        password: "changeme"
+```
+
+### Applying a datasource change — no pod restarts
+
+Datasources are helm-rendered, so a change needs a `helm upgrade`, but **no pods are restarted**:
+
+```bash
+helm upgrade --install grafana . -n observability -f values.yaml
+# or, if you keep overrides elsewhere and only touched datasources:
+helm upgrade --install grafana . -n observability --reuse-values
+```
+
+How it works: `helm upgrade` only updates the `grafana-datasources` ConfigMap. The **k8s-sidecar** container (inside the Grafana pod) watches ConfigMaps with the `grafana_datasource: "1"` label, copies the change into Grafana's provisioning folder, and calls the Grafana admin API to reload datasources. Grafana and the PostgreSQL/Valkey pods keep running untouched.
 
 ---
 
