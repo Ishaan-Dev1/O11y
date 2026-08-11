@@ -69,16 +69,16 @@ The live `values.yaml` config takes a slightly different shape than 1.0–1.2 ab
 [FILTER]
     Name    grep
     Match   kube.*
-    Exclude log ^DEBUG
+    Exclude log (?i)DEBUG
     Exclude log /api/v1/readyz
 ```
 
 **What's different here:**
-- Instead of `Exclude log_level DEBUG` (matching a parsed field), it matches `^DEBUG` directly against the raw `log` text, anchored at the start of the line. This only works if your app actually prefixes debug lines with the literal string `DEBUG` (e.g. `DEBUG: cache miss...`) — same caveat as the Lua script discussion below.
+- Instead of `Exclude log_level DEBUG` (matching a parsed field), it matches `(?i)DEBUG` directly against the raw `log` text. `(?i)` makes the match **case-insensitive** and, unlike an anchored `^DEBUG`, it is **not** anchored to the start of the line — it matches `DEBUG`, `debug`, `Debug`, etc. anywhere in the log line (e.g. `2026-07-20T10:00:00 debug: cache miss...` or `[DEBUG] handler started`), not just lines that literally begin with the token. This is more forgiving of timestamp-prefixed or bracketed log formats than a strict start-anchored match, at the cost of being slightly more likely to match `DEBUG` appearing incidentally inside a longer message.
 - INFO isn't excluded at grep level at all in this version — INFO filtering is left entirely to the Lua sampling filter (Section 2.1) instead of being fully dropped here. That's a valid design choice: grep does a hard cut on DEBUG (rarely useful, safe to fully drop), while INFO is only *thinned out* probabilistically so you keep a representative sample rather than losing INFO-level visibility completely.
 - The health-check endpoint excluded is `/api/v1/readyz` rather than `/api/v1/health` — worth double-checking against your actual probe path (Kubernetes readiness probes commonly hit `/readyz`, `/healthz`, or `/api/v1/health` depending on the app/framework — pick whichever matches what's actually configured on your Deployments' `readinessProbe`).
 
-**Why you might prefer this version:** it's a leaner ruleset (2 lines vs 3), and it deliberately splits responsibility — grep for a hard binary exclude (DEBUG, readiness noise), Lua for probabilistic thinning (INFO). The tradeoff is it depends on raw-text prefix matching rather than `Merge_Log On` + parsed `log_level`, so it's more fragile to log-format changes (see 2.1 below).
+**Why you might prefer this version:** it's a leaner ruleset (2 lines vs 3), and it deliberately splits responsibility — grep for a hard binary exclude (DEBUG, readiness noise), Lua for probabilistic thinning (INFO). The tradeoff is it depends on raw-text matching rather than `Merge_Log On` + parsed `log_level`, so it's more fragile to log-format changes (see 2.1 below).
 
 ## 2. Lua Sampling Filter — Probabilistic Sampling
 
@@ -135,6 +135,8 @@ This runs *after* the grep filter as a second layer — grep already excludes IN
 The live script takes a different approach — it doesn't rely on a parsed `log_level` field at all:
 
 ```lua
+math.randomseed(os.time())
+
 function sample_info(tag, timestamp, record)
   local msg = record["log"]
   if not msg then
@@ -156,8 +158,9 @@ end
 ```
 
 **What's different here, and why it matters:**
+- **Seeds the RNG once at load time.** `math.randomseed(os.time())` runs a single time when the script is loaded (not per-record). Without this, Lua's `math.random()` uses a fixed default seed, so every Fluent Bit agent restart would reproduce the exact same "random" drop sequence — seeding on `os.time()` avoids that determinism and gives a genuinely different sample each time the agent starts up.
 - **Matches on raw text, not a parsed field.** It reads `record["log"]` and does `string.match(msg, "^INFO:")` / `"^DEBUG:"` — a prefix match on the literal log line — instead of checking `record["log_level"]`. This means it does **not** depend on `Merge_Log On` or on the `kubernetes` filter having parsed a `log_level` key. It'll run even if that parsing never happens.
-- **Trade-off:** because it's a raw prefix match, it only works if the app's log lines literally start with `INFO:` / `DEBUG:` (case-sensitive, anchored at the very start). It will silently fail to match (and therefore never sample) if logs are JSON-structured (`{"level":"info",...}`), lowercase (`info:`), or timestamp-prefixed (`2026-07-20T10:00:00 INFO: ...`). Worth checking a handful of real pod logs to confirm the format actually matches before relying on this.
+- **Trade-off:** because it's a raw prefix match, it only works if the app's log lines literally start with `INFO:` / `DEBUG:` (case-sensitive, anchored at the very start). It will silently fail to match (and therefore never sample) if logs are JSON-structured (`{"level":"info",...}`), lowercase (`info:`), or timestamp-prefixed (`2026-07-20T10:00:00 INFO: ...`). Worth checking a handful of real pod logs to confirm the format actually matches before relying on this. Note this is a stricter, case-sensitive, start-anchored match — unlike the grep filter in 1.3 above, which uses the case-insensitive, unanchored `(?i)DEBUG` for its own DEBUG exclusion. The two filters don't use the same matching style, which is fine since they run independently, but worth keeping in mind if either format ever changes.
 - **Different drop rates:** 50% for INFO (vs 90% in the field-based version) and 95% for DEBUG (same as before). The lower INFO drop rate keeps more INFO-level visibility — makes sense as a complement to 1.3, where grep isn't excluding INFO at all anymore, so Lua is the *only* thing thinning INFO volume and a softer 50% avoids over-trimming.
 - **Return signature uses `timestamp, record`** instead of `0, 0`. Both are valid Lua filter return conventions (`code, timestamp, record`) — using the real `timestamp`/`record` on pass-through is slightly safer/more explicit than hardcoding zeros, since it guarantees the original values are preserved unchanged rather than relying on Fluent Bit's handling of `0`.
 
