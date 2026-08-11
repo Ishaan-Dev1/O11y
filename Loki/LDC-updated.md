@@ -1,4 +1,4 @@
-# Loki + Fluent Bit — POC Updated Chart (v1.0.2)
+# Loki + Fluent Bit —  Updated Chart 
 
 Updated/experimental Loki umbrella chart. Same architecture as the LDC chart but on a **newer Loki subchart** (`loki` 18.7.1 / appVersion 3.7.4, grafana-community repo) with `fullnameOverride` so the **resource names stay identical** to the running LDC chart (`logging-loki-*`). This chart is the upgrade path for LDC.
 
@@ -225,9 +225,7 @@ kubectl get pvc -n logging -l app.kubernetes.io/name=logging
 kubectl delete pvc -n logging <pvc-name>
 ```
 
-## 10. Troubleshooting
 
-Same checklist as [LDC §9](../Loki/README.md#9-troubleshooting), plus:
 
 | Symptom                          | Check |
 |----------------------------------|-------|
