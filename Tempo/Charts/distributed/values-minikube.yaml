@@ -1,0 +1,13 @@
+# Single-node local Kubernetes (minikube) overrides - merge on top of values.yaml
+tempo:
+  global:
+    dnsService: "kube-dns"
+  gateway:
+    nginxConfig:
+      resolver: "kube-dns.kube-system.svc.cluster.local."
+  ingester:
+    persistence:
+      storageClass: standard
+  metricsGenerator:
+    # Single node => default hard anti-affinity would block scheduling; disable it
+    affinity: ""
