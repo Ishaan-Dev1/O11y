@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: loki-backup
+  namespace: logging
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 300
+
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 3600
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+
+          containers:
+            - name: backup
+              image: amazon/aws-cli:2.17.38
+              imagePullPolicy: IfNotPresent
+
+              command:
+                - /bin/sh
+                - /scripts/backup.sh
+
+              envFrom:
+                - secretRef:
+                    name: minio-backup-secret
+
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+
+              volumeMounts:
+                - name: loki-storage
+                  mountPath: /var/loki
+
+                - name: backup-script
+                  mountPath: /scripts
+
+          volumes:
+            - name: loki-storage
+              persistentVolumeClaim:
+                claimName: storage-logging-0
+
+            - name: backup-script
+              configMap:
+                name: loki-backup-script
+                defaultMode: 0755
