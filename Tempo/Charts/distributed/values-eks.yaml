@@ -1,0 +1,15 @@
+# EKS overrides - merge on top of values.yaml
+tempo:
+  global:
+    dnsService: "coredns"
+  ingester:
+    persistence:
+      storageClass: gp3
+  # Optional: pin to dedicated observability nodes
+  # nodeSelector:
+  #   node-role.kubernetes.io/o11y: "true"
+  # tolerations:
+  #   - key: "team"
+  #     operator: "Equal"
+  #     value: "o11y"
+  #     effect: "NoSchedule"
