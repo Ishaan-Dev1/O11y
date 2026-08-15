@@ -1,12 +1,27 @@
 apiVersion: v2
-name: tempo-updated
-description: A Helm chart for Grafana Tempo in microservices mode with Kafka-optional ingest
+name: loki
+description: A Helm chart for Grafana Loki with Fluent Bit as the log collector
 type: application
-version: 0.4.0
-appVersion: 2.10.7
+version: 1.0.2
+appVersion: 3.7.4
 
 dependencies:
-  - alias: tempo
-    name: tempo-distributed
+  - alias: logging
+    name: loki
     repository: https://grafana-community.github.io/helm-charts
-    version: 2.26.2
+    version: 18.7.1
+    tags:
+      - logging
+  # - alias: promtail
+  #   name: promtail
+  #   repository: https://grafana.github.io/helm-charts
+  #   tags:
+  #     - logging
+  #   version: 6.16.4
+
+  - alias: fluent-bit
+    name: fluent-bit
+    repository: https://ot-container-kit.github.io/helm-charts
+    version: 0.0.1
+    tags:
+      - logging
