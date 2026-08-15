@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: loki-backup-test
+  namespace: logging
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+
+      containers:
+        - name: backup
+          image: amazon/aws-cli:2.17.38
+
+          command:
+            - /bin/sh
+            - /scripts/backup.sh
+
+          envFrom:
+            - secretRef:
+                name: minio-backup-secret
+
+          volumeMounts:
+            - name: loki-storage
+              mountPath: /var/loki
+
+            - name: backup-script
+              mountPath: /scripts
+
+      volumes:
+        - name: loki-storage
+          persistentVolumeClaim:
+            claimName: storage-logging-0
+
+        - name: backup-script
+          configMap:
+            name: loki-backup-script
+            defaultMode: 0755
