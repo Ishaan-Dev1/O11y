@@ -1,0 +1,23 @@
+# Minikube overrides for the standalone monolithic Tempo chart.
+# Usage: helm install tempo . -f values.yaml -f values-minikube.yaml -n <namespace>
+#
+# Differences vs. base values.yaml:
+#   * Ingester PVC uses the "standard" storage class
+#   * Smaller resource requests/limits (single-node minikube)
+#   * No ServiceMonitor (no Prometheus Operator in minikube)
+tempo:
+  tempo:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1
+        memory: 1Gi
+
+  persistence:
+    storageClassName: standard
+    size: 5Gi
+
+  serviceMonitor:
+    enabled: false
