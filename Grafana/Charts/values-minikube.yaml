@@ -1,0 +1,23 @@
+# ======================================================================
+# Minikube (single-node local Kubernetes) overrides - merge on top of values.yaml
+#
+# Usage:
+#   helm upgrade --install grafana . -n observability \
+#     -f values.yaml -f values-minikube.yaml
+# ======================================================================
+
+grafana:
+  service:
+    type: NodePort
+    port: 80
+    targetPort: 3000
+    nodePort: 30080
+
+valkey:
+  dataStorage:
+    className: standard
+
+postgres:
+  primary:
+    persistence:
+      storageClass: standard
