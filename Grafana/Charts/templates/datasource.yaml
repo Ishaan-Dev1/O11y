@@ -1,0 +1,56 @@
+{{- if .Values.datasources.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.datasources.configMapName }}
+  labels:
+    grafana_datasource: "1"
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+{{- range .Values.datasources.list }}
+      - name: {{ .name }}
+        uid: {{ .uid }}
+        type: {{ .type }}
+        access: {{ .access | default "proxy" }}
+        url: {{ .url }}
+{{- if .user }}
+        user: {{ .user | quote }}
+{{- end }}
+{{- if .database }}
+        database: {{ .database | quote }}
+{{- end }}
+{{- if .basicAuth }}
+        basicAuth: {{ .basicAuth }}
+{{- end }}
+{{- if .basicAuthUser }}
+        basicAuthUser: {{ .basicAuthUser | quote }}
+{{- end }}
+{{- if .withCredentials }}
+        withCredentials: {{ .withCredentials }}
+{{- end }}
+        isDefault: {{ .isDefault | default false }}
+        editable: true
+{{- if .secureJsonData }}
+        secureJsonData:
+          {{- toYaml .secureJsonData | nindent 10 }}
+{{- end }}
+        jsonData:
+          timeout: 300
+{{- if .tracesToLogs }}
+          tracesToLogsV2:
+            datasourceUid: {{ .tracesToLogs }}
+{{- end }}
+{{- if .tracesToMetrics }}
+          tracesToMetrics:
+            datasourceUid: {{ .tracesToMetrics }}
+{{- end }}
+{{- if .jsonData }}
+          {{- toYaml .jsonData | nindent 10 }}
+{{- end }}
+{{- if .config }}
+          {{- toYaml .config | nindent 8 }}
+{{- end }}
+{{- end }}
+{{- end }}
