@@ -1,0 +1,15 @@
+# Azure AKS overrides - merge on top of values.yaml
+tempo:
+  global:
+    dnsService: "coredns"
+  ingester:
+    persistence:
+      storageClass: managed-csi
+  # Optional: pin to dedicated observability node pools
+  # nodeSelector:
+  #   agentpool: obs
+  # tolerations:
+  #   - key: "workload"
+  #     operator: "Equal"
+  #     value: "observability"
+  #     effect: "NoSchedule"
