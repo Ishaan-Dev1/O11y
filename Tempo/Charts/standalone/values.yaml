@@ -1,0 +1,182 @@
+# =============================================================================
+# TEMPO - Standalone chart (monolithic / single-binary, NO Kafka)
+# =============================================================================
+# Wraps grafana-community/tempo 2.2.2 (N-1 stable) and runs Tempo as ONE
+# StatefulSet running every role (distributor, ingester, querier, compactor,
+# query-frontend, metrics-generator) in a single process.
+# No Kafka, no external dependencies beyond object storage.
+#
+# Deploy pattern (values are MERGED, overlay file wins):
+#   helm install tempo . -n <namespace> -f values.yaml -f values-minikube.yaml
+#
+# Naming: no overrides — resource names come from the release name
+# (install with release name `tempo` → everything is `tempo`).
+# =============================================================================
+tempo:
+  replicas: 1
+
+  global:
+    commonLabels: {}
+
+  tempo:
+    # Image pinned to the OpsTree build of Tempo 2.10.x
+    registry: quay.io
+    repository: opstree/tempo
+    tag: "2.10.4-debian13"
+    pullPolicy: IfNotPresent
+
+    updateStrategy: RollingUpdate
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 2
+        memory: 2Gi
+
+    streamOverHttpEnabled: false
+    memBallastSizeMbs: 512
+    multitenancyEnabled: false
+    reportingEnabled: true
+
+    metricsGenerator:
+      enabled: true
+      processor:
+        service_graphs: {}
+        span_metrics:
+          dimensions:
+            - service.namespace
+            - http.method
+            - http.status_code
+      registry:
+        collection_interval: 15s
+        external_labels: {}
+      storage:
+        path: "/tmp/tempo"
+        remote_write:
+          - url: "http://vminsert-vm.monitoring.svc:8480/insert/0/prometheus/api/v1/write"
+            send_exemplars: true
+            queue_config:
+              capacity: 10000
+              max_shards: 5
+              min_shards: 1
+              batch_send_deadline: 5s
+      traces_storage:
+        path: "/tmp/traces"
+
+    ingester:
+      # Optimized: shorter idle period = faster flushing, lower memory
+      flush_check_period: 30s
+      trace_idle_period: 30s
+      max_block_duration: 30m
+      complete_block_timeout: 1h
+      max_block_bytes: 524288000  # 500MB
+
+    querier:
+      max_concurrent_queries: 10
+      search:
+        query_timeout: 120s
+      trace_by_id:
+        query_timeout: 60s
+
+    queryFrontend:
+      max_outstanding_per_tenant: 2000
+      max_retries: 2
+      search:
+        concurrent_jobs: 1000
+        target_bytes_per_job: 104857600  # 100MB
+      trace_by_id:
+        query_shards: 16
+      metrics:
+        max_duration: 3h
+        query_backend_after: 1h
+
+    # Keep traces for 2 days
+    retention: 48h
+
+    overrides:
+      defaults:
+        ingestion:
+          rate_limit_bytes: 15000000                # 15MB/s per tenant
+          burst_size_bytes: 20000000                # 20MB burst
+          max_traces_per_user: 10000                # Max traces in flight per tenant
+        global:
+          max_bytes_per_trace: 5000000              # 5MB max trace size
+        compaction:
+          block_retention: 48h                      # Global retention
+        metrics_generator:
+          processors:
+            - service-graphs
+            - span-metrics
+      per_tenant_override_config: /conf/overrides.yaml
+
+    server:
+      http_listen_port: 3200
+      http_server_read_timeout: 120s
+      http_server_write_timeout: 120s
+      http_server_idle_timeout: 120s
+      grpc_server_max_recv_msg_size: 4194304       # 4MB
+      grpc_server_max_send_msg_size: 4194304       # 4MB
+      log_level: info
+
+    storage:
+      trace:
+        # S3/MinIO backend - override for cloud-native backends (gcs/azure)
+        backend: s3
+        s3:
+          bucket: o11y-traces-dev
+          endpoint: minio.ldc.opstree.dev:9000
+          access_key: minioadmin
+          secret_key: "opstreeadmin@2510"
+          insecure: false
+          forcepathstyle: true
+        blocklist_poll: 10m
+        pool:
+          max_workers: 200
+          queue_depth: 10000
+        search:
+          prefetch_trace_count: 500
+        wal:
+          path: /var/tempo/wal
+
+    receivers:
+      # Jaeger + OTLP receivers enabled (chart default).
+      # NOTE: disabling jaeger would break the bundled service port template,
+      # so both receivers stay on. OTLP is the primary ingress (4317/4318).
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+
+  tempoQuery:
+    # Jaeger-style UI sidecar (tempo-query). Enable for a browser UI.
+    enabled: false
+
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    runAsNonRoot: true
+
+  service:
+    type: ClusterIP
+    protocol: "TCP"
+
+  serviceMonitor:
+    enabled: false
+
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: true
+
+  persistence:
+    enabled: true
+    # Storage class per platform (null = use cluster default):
+    #   minikube -> standard | GKE -> standard-rwo | EKS -> gp3 | AKS -> managed-csi
+    storageClassName: null
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
