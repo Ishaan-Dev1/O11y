@@ -1,14 +1,12 @@
 apiVersion: v2
-name: tempo
-description: A Helm chart for Grafana Tempo in monolithic (single-binary) mode without Kafka
+name: tempo-updated
+description: A Helm chart for Grafana Tempo in microservices mode with Kafka-optional ingest
 type: application
-version: 1.0.0
-appVersion: 2.10.4
+version: 0.4.0
+appVersion: 2.10.7
 
 dependencies:
-  - name: tempo
-    alias: tempo
+  - alias: tempo
+    name: tempo-distributed
     repository: https://grafana-community.github.io/helm-charts
-    version: 2.2.2
-    tags:
-      - tracing
+    version: 2.26.2
