@@ -1,0 +1,292 @@
+
+tempo:
+  global:
+    # DNS service of the cluster's CoreDNS:
+    #   EKS / Azure AKS / LDC  -> "coredns"
+    #   GKE / minikube         -> "kube-dns"
+    dnsService: "coredns"
+  tempo:
+    image:
+      registry: quay.io
+      repository: opstree/tempo
+      tag: "2.10.4-debian13"
+
+  traces:
+    otlp:
+      http:
+        enabled: true
+      grpc:
+        enabled: true
+    jaeger:
+      thriftHttp:
+        enabled: false
+      thriftBinary:
+        enabled: false
+      thriftCompact:
+        enabled: false
+      grpc:
+        enabled: false
+    zipkin:
+      enabled: false
+
+  # --- Storage backend: S3/MinIO (works everywhere) ---
+  # To use a cloud-native backend instead, override `storage.trace` in the
+  # platform file, e.g.:
+  #   GKE:   backend: gcs    -> storage.trace.gcs.bucket_name
+  #   AWS:   backend: s3     -> storage.trace.s3 (region, bucket, access/secret)
+  #   Azure: backend: azure  -> storage.trace.azure (container_name, storage_account)
+  storage:
+    trace:
+      backend: s3
+      s3:
+        bucket: o11y-traces
+        endpoint: minio.ldc.opstree.dev:9000
+        insecure: false
+        forcepathstyle: true
+        access_key: minioadmin
+        secret_key: "opstreeadmin@2510"
+      # Optimized: check for new blocks less frequently
+      blocklist_poll: 10m
+      pool:
+        # Reduced from 400 - more reasonable for distributed setup
+        max_workers: 200
+        queue_depth: 10000
+      search:
+        # Reduced prefetch - saves memory
+        prefetch_trace_count: 500
+
+  gateway:
+    enabled: true
+    replicas: 1
+    image:
+      registry: docker.io
+      repository: nginxinc/nginx-unprivileged
+      tag: "1.31-alpine"
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 4
+    # resources:
+    #   requests:
+    #     cpu: 100m
+    #     memory: 128Mi
+    #   limits:
+    #     cpu: 200m
+    #     memory: 256Mi
+    affinity: ""
+    topologySpreadConstraints: ""
+
+  ingester:
+    enabled: true
+    replicas: 2
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 1
+        memory: 1Gi
+    persistence:
+      enabled: true
+      size: 5Gi
+      # Storage class per platform (null = use cluster default):
+      #   minikube -> standard | GKE -> standard-rwo | EKS -> gp3 | AKS -> managed-csi | LDC -> (default)
+      storageClass: null
+    config:
+      replication_factor: 1
+      # Optimized: shorter idle period = faster flushing
+      trace_idle_period: 30s
+      # Flush more frequently to reduce memory pressure
+      flush_check_period: 30s
+      # Max trace idle time before force flush
+      max_block_duration: 30m
+      # Complete block size target (smaller = more frequent flushes)
+      max_block_bytes: 524288000  # 500MB
+    affinity: ""
+    topologySpreadConstraints: ""
+
+  metricsGenerator:
+    enabled: true
+    config:
+      processor:
+        # Generate service graphs for trace visualization
+        service_graphs:
+          dimensions:
+            - service.namespace
+        # Generate span metrics
+        span_metrics:
+          dimensions:
+            - service.namespace
+            - http.method
+            - http.status_code
+      storage:
+        path: /var/tempo/wal
+        remote_write:
+          - url: "http://vminsert-vm.monitoring.svc:8480/insert/0/prometheus/api/v1/write"
+            send_exemplars: true
+            # Batch writes for efficiency
+            queue_config:
+              capacity: 10000
+              max_shards: 5
+              min_shards: 1
+              batch_send_deadline: 5s
+
+  distributor:
+    replicas: 2
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 4
+    config:
+      log_received_spans:
+        enabled: false
+        include_all_attributes: false
+      # Extend traces - helpful for distributed tracing
+      extend_writes: true
+    affinity: ""
+    topologySpreadConstraints: ""
+
+  compactor:
+    replicas: 1
+    config:
+      compaction:
+        # Optimized: Keep traces for 2 days
+        block_retention: 48h
+        compacted_block_retention: 1h
+        compaction_window: 1h
+        # Run compaction every 2 minutes (balance between CPU and storage efficiency)
+        compaction_cycle: 2m
+        # Input buffer - 5MB is reasonable
+        v2_in_buffer_bytes: 5242880
+        # Output buffer - 20MB
+        v2_out_buffer_bytes: 20971520
+        # Max objects per compaction - reduced for memory efficiency
+        max_compaction_objects: 4000000
+        # Max compacted block size - 100GB
+        max_block_bytes: 107374182400
+        # Parallel retention operations
+        retention_concurrency: 5
+        # Prefetch traces for faster compaction
+        v2_prefetch_traces_count: 500
+        max_time_per_tenant: 3m
+    affinity: ""
+    topologySpreadConstraints: ""
+
+  querier:
+    replicas: 2
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 4
+    config:
+      # Reduced concurrent queries to save memory
+      max_concurrent_queries: 10
+      search:
+        query_timeout: 120s
+      trace_by_id:
+        query_timeout: 60s
+      # Enable query stats for monitoring
+      frontend_worker:
+        grpc_client_config:
+          max_send_msg_size: 16777216  # 16MB
+    affinity: ""
+    topologySpreadConstraints: ""
+
+  queryFrontend:
+    replicas: 2
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 4
+    config:
+      max_outstanding_per_tenant: 2000
+      max_retries: 2
+      search:
+        # Optimized: shard search queries for parallelism
+        concurrent_jobs: 1000
+        target_bytes_per_job: 104857600  # 100MB
+      trace_by_id:
+        query_shards: 16
+      metrics:
+        max_duration: 3h
+        query_backend_after: 1h
+    affinity: ""
+    topologySpreadConstraints: ""
+
+  # --- Global server timeouts ---
+  server:
+    http_server_read_timeout: 120s
+    http_server_write_timeout: 120s
+    http_server_idle_timeout: 120s
+    grpc_server_max_recv_msg_size: 4194304      # 4MB
+    grpc_server_max_send_msg_size: 4194304      # 4MB
+    log_level: info
+
+  # --- Global limits (new scoped overrides format) ---
+  overrides:
+    defaults:
+      ingestion:
+        rate_limit_bytes: 15000000                # 15MB/s per tenant
+        burst_size_bytes: 20000000                # 20MB burst
+        max_traces_per_user: 10000                # Max traces in flight per tenant
+      global:
+        max_bytes_per_trace: 5000000              # 5MB max trace size
+      compaction:
+        block_retention: 48h                      # Global retention
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
+
+  memcached:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: memcached
+      tag: "1.6.43-alpine"
+    # Optimized memcached settings
+    extraArgs:
+      - -m 384           # 384MB cache size
+      - -I 2m            # Max item size 2MB
+      - -c 1024          # Max connections
+      - -t 4             # Threads
+
+  memcachedExporter:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: prom/memcached-exporter
+      tag: "v0.15.3"
+
+  metaMonitoring:
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+    grafanaAgent:
+      enabled: false
+
+  # HTTPRoute named exactly "tempo" (matches live) rendered in-chart via extraObjects
+  # NOTE: delete the OLD kubectl-managed route BEFORE install, else helm fails:
+  #   kubectl delete httproute tempo -n observability
+  extraObjects:
+    - |
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: tempo
+        namespace: observability
+      spec:
+        hostnames:
+          - tempo.opstree.net
+        parentRefs:
+          - name: web-gateway
+            namespace: envoy-gateway-system
+        rules:
+          - backendRefs:
+              - name: tempo-gateway
+                port: 80
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /
