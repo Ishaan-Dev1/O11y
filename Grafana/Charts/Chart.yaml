@@ -1,0 +1,23 @@
+apiVersion: v2
+name: grafana
+description: A Helm chart for Grafana with Postgres and Valkey
+type: application
+version: 1.0.0
+appVersion: "13.1"
+
+dependencies:
+  - name: grafana
+    repository: https://grafana.github.io/helm-charts
+    version: 10.5.14
+    alias: grafana
+    condition: grafana.enabled
+  - name: valkey
+    repository: https://valkey.io/valkey-helm/
+    version: 0.11.0
+    alias: valkey
+    condition: valkey.enabled
+  - name: postgresql
+    repository: https://charts.bitnami.com/bitnami
+    version: "18.8.7"
+    alias: postgres
+    condition: postgres.enabled
