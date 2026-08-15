@@ -1,0 +1,311 @@
+datasources:
+  enabled: true
+  configMapName: grafana-datasources
+  list:
+    - name: loki
+      uid: loki
+      type: loki
+      url: http://loki-logging-gateway.observability.svc.cluster.local:80
+      isDefault: false
+    - name: tempo
+      uid: tempo
+      type: tempo
+      url: http://tempo-gateway.observability.svc.cluster.local:80
+      isDefault: false
+      tracesToLogs: loki
+      tracesToMetrics: victoriametrics
+    - name: victoriametrics
+      uid: victoriametrics
+      type: prometheus
+      url: http://vmselect-vm-stack.observability.svc.cluster.local:8481
+      isDefault: true
+  
+    #
+    # Example - ClickHouse (plugin grafana-clickhouse-datasource):
+    # - name: clickhouse
+    #   uid: clickhouse
+    #   type: grafana-clickhouse-datasource
+    #   url: http://clickhouse.observability.svc.cluster.local:8123
+    #   isDefault: false
+    #   user: default
+    #   database: default
+    #   jsonData:
+    #     protocol: native
+    #     port: 9000
+    #   secureJsonData:
+    #     password: "changeme"
+    #
+    # Example - MySQL:
+    # - name: mysql
+    #   uid: mysql
+    #   type: mysql
+    #   url: mysql.observability.svc.cluster.local:3306
+    #   user: grafana
+    #   database: myapp
+    #   jsonData:
+    #     maxOpenConns: 100
+    #     sslmode: disable
+    #   secureJsonData:
+    #     password: "changeme"
+    # ------------------------------------------------------------------------
+
+grafana:
+  enabled: true
+  admin:
+    existingSecret: grafana-admin-credentials
+    userKey: admin-user
+    passwordKey: admin-password
+  replicas: 1
+  # --- Scale-out (optional) -----------------------------------------------
+  # Single pod by default. To run multiple Grafana replicas (requires the
+  # shared Postgres backend below), bump `replicas` and/or enable autoscaling:
+  #   autoscaling:
+  #     enabled: true
+  #     minReplicas: 2
+  #     maxReplicas: 5
+  #     targetCPU: "60"
+  #     targetMemory: "60"
+  # ------------------------------------------------------------------------
+  image:
+    registry: quay.io
+    repository: opstree/grafana
+    pullPolicy: IfNotPresent
+    tag: "13.1-debian13"
+  # opstree image runs as UID 65532, not the official grafana chart default 472
+  securityContext:
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532
+  env:
+    GF_PLUGINS_ALLOW_UNSIGNED: "marcusolsson-dynamictext-panel"
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: "app.kubernetes.io/name"
+                operator: In
+                values:
+                  - grafana
+          topologyKey: "kubernetes.io/hostname"
+  nodeSelector: {}
+  tolerations: []
+  rbac:
+    create: true
+    namespaced: true
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+    sessionAffinity: ClientIP
+  # --- Custom domain access (Ingress) -------------------------------------
+  # Make Grafana reachable at a domain e.g. grafana.opstree.net.
+  # Requires: an ingress controller (nginx/istio) + DNS A-record -> ingress
+  # IP + (optional) TLS cert. When enabled, the grafana subchart auto-sets
+  # server.domain from the first host; keep root_url in grafana.ini in sync.
+  ingress:
+    enabled: false
+    ingressClassName: nginx
+    annotations: {}
+    labels: {}
+    path: /
+    pathType: Prefix
+    hosts:
+      - grafana.opstree.net
+    tls: []
+    # tls:
+    #   - secretName: grafana-tls
+    #     hosts:
+    #       - grafana.opstree.net
+  plugins:
+    - grafana-polystat-panel
+    # - grafana-clickhouse-datasource
+  sidecar:
+    image:
+      registry: quay.io
+      repository: opstree/k8s-sidecar
+      tag: "2.7.3"
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      labelValue: "1"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2
+      memory: 4Gi
+  persistence:
+    enabled: false
+  envValueFrom:
+    GF_DATABASE_PASSWORD:
+      secretKeyRef:
+        name: grafana-postgresql
+        key: password
+
+  grafana.ini:
+    server:
+      # Full public URL (redirects, emails, OAuth callbacks). Keep in sync
+      # with the ingress host above. Scheme depends on your TLS setup.
+      root_url: https://grafana.opstree.net
+    users:
+      viewers_can_edit: true
+    database:
+      type: postgres
+      host: "grafana-postgresql.observability.svc.cluster.local:5432"
+      name: "grafana"
+      user: "grafana"
+      ssl_mode: "disable"
+      max_open_conn: 100
+      max_idle_conn: 25
+      conn_max_lifetime: 14400
+    remote_cache:
+      type: redis
+      connstr: "addr=grafana-valkey.observability.svc.cluster.local:6379,pool_size=100,db=0"
+    security:
+      hide_version: true
+    live:
+      enabled: false
+    updates:
+      check_for_updates: false
+    panels:
+      disable_sanitize_html: false
+    news:
+      news_feed_enabled: false
+    dataproxy:
+      timeout: 300
+      keep_alive_seconds: 300
+      idle_conn_timeout_seconds: 90
+      max_idle_connections: 100
+      max_conns_per_host: 25
+    dashboards:
+      min_refresh_interval: 30s
+    analytics:
+      check_for_updates: false
+      reporting_enabled: false
+    feature_toggles:
+      provisioning: true
+      kubernetesDashboards: true
+
+valkey:
+  enabled: true
+  fullnameOverride: grafana-valkey
+  deploymentStrategy: Recreate
+  image:
+    registry: docker.io
+    repository: valkey/valkey
+    tag: "9.0.3-trixie"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 4096Mi
+  nodeSelector: {}
+  tolerations: []
+  dataStorage:
+    enabled: true
+    requestedSize: 5Gi
+    className: ""
+    accessModes:
+      - ReadWriteOnce
+    keepPvc: true
+  service:
+    type: ClusterIP
+    port: 6379
+  serviceAccount:
+    create: true
+    automount: false
+  valkeyLogLevel: "notice"
+  metrics:
+    enabled: false
+    exporter:
+      port: 9121
+      image:
+        registry: docker.io
+        repository: oliver006/redis_exporter
+        pullPolicy: IfNotPresent
+        tag: "v1.79.0"
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 50m
+          memory: 64Mi
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        http: 9121
+    serviceMonitor:
+      enabled: false
+
+# ======================================================================
+# PostgreSQL 18 backend - Bitnami chart (postgresql:18.8.7) running the
+# opstree/managed-postgres image (mirror of the official Docker postgres
+# image: uid 70, PGDATA /var/lib/postgresql/18/data, POSTGRES_* envs).
+#
+# The bitnami chart is overridden to stop assuming the bitnami image
+# layout (data dir, UID, password files) so the official image works.
+# fullnameOverride keeps the Service name stable so grafana.ini and the
+# GF_DATABASE_PASSWORD secret ref above keep working unchanged.
+# ======================================================================
+postgres:
+  enabled: true
+  fullnameOverride: grafana-postgresql
+  global:
+    security:
+      allowInsecureImages: true
+  image:
+    registry: quay.io
+    repository: opstree/managed-postgres
+    tag: "18-alpine3.23"
+    pullPolicy: IfNotPresent
+  auth:
+    username: grafana
+    database: grafana
+    # Pass password via env, not bitnami-style files under /opt/bitnami
+    usePasswordFiles: false
+  postgresqlDataDir: /var/lib/postgresql/18/data
+  primary:
+    podSecurityContext:
+      enabled: true
+      runAsUser: 70
+      runAsGroup: 70
+      fsGroup: 70
+    containerSecurityContext:
+      enabled: true
+      runAsUser: 70
+      runAsGroup: 70
+    extraEnvVars:
+      # official image reads POSTGRES_DB (bitnami name POSTGRES_DATABASE is ignored)
+      - name: POSTGRES_DB
+        value: grafana
+    extraVolumes:
+      - name: run-postgresql
+        emptyDir: {}
+    extraVolumeMounts:
+      - name: run-postgresql
+        mountPath: /run/postgresql
+    service:
+      type: ClusterIP
+      port: 5432
+    persistence:
+      enabled: true
+      mountPath: /var/lib/postgresql
+      storageClass: ""
+      size: 5Gi
+      accessModes:
+        - ReadWriteOnce
+    nodeSelector: {}
+    tolerations: []
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1
+        memory: 2Gi
