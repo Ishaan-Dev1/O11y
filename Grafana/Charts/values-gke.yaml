@@ -1,0 +1,39 @@
+# ======================================================================
+# Google Kubernetes Engine (GKE) overrides - merge on top of values.yaml
+#
+# Usage:
+#   helm upgrade --install grafana . -n observability \
+#     -f values.yaml -f values-gke.yaml
+# ======================================================================
+
+grafana:
+  nodeSelector:
+    cloud.google.com/gke-nodepool: obs-node-pool
+  tolerations:
+    - key: "workload"
+      operator: "Equal"
+      value: "observability"
+      effect: "NoSchedule"
+
+valkey:
+  nodeSelector:
+    cloud.google.com/gke-nodepool: obs-node-pool
+  tolerations:
+    - key: "workload"
+      operator: "Equal"
+      value: "observability"
+      effect: "NoSchedule"
+  dataStorage:
+    className: standard-rwo
+
+postgres:
+  primary:
+    nodeSelector:
+      cloud.google.com/gke-nodepool: obs-node-pool
+    tolerations:
+      - key: "workload"
+        operator: "Equal"
+        value: "observability"
+        effect: "NoSchedule"
+    persistence:
+      storageClass: standard-rwo
