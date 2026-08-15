@@ -1,0 +1,18 @@
+# GKE overrides - merge on top of values.yaml
+tempo:
+  global:
+    dnsService: "kube-dns"
+  gateway:
+    nginxConfig:
+      resolver: "kube-dns.kube-system.svc.cluster.local."
+  ingester:
+    persistence:
+      storageClass: standard-rwo
+  # Optional: pin to a dedicated observability node pool
+  # nodeSelector:
+  #   cloud.google.com/gke-nodepool: obs-node-pool
+  # tolerations:
+  #   - key: "workload"
+  #     operator: "Equal"
+  #     value: "observability"
+  #     effect: "NoSchedule"
