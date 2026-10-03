@@ -37,10 +37,7 @@ tempo:
 
 Release name `tempo` + chart alias `tempo` ⇒ `tempo.fullname` resolves to `tempo` and every resource is `tempo-*` (e.g. `tempo-ingester-0`, `tempo-gateway`, `tempo-distributor`).
 
-> ⚠️ **Delete the old kubectl-managed `tempo` HTTPRoute before install** — it carries no Helm ownership annotations and `helm install` will fail on a name conflict:
-> ```bash
-> kubectl delete httproute tempo -n observability
-> ```
+> **Adopt the existing resources first — do NOT delete the HTTPRoute.** The live `tempo` HTTPRoute carries no Helm ownership annotations, so a plain `helm install` would fail on a name conflict. `adopt-tempo.sh` stamps the required `meta.helm.sh/release-*` annotations onto it (annotations/labels only — it never deletes or alters a spec), after which Helm adopts the HTTPRoute and the resource conflict disappears. Run it before the install; see [§9](#9-upgrade-from-plain-manifests-cutover).
 
 ## 2. Chart Structure
 
@@ -52,13 +49,20 @@ dependencies:
     version: 2.26.2
 ```
 
-| File              | Purpose                                              |
-|-------------------|------------------------------------------------------|
-| `Chart.yaml`      | Umbrella chart metadata + dependency (`tempo`)        |
-| `values.yaml`     | All overrides — base tuning **merged** with LDC prod overrides |
-| `charts/`         | Vendored subchart tgz (tempo-distributed 2.26.2)      |
+| File                       | Purpose                                               |
+|----------------------------|-------------------------------------------------------|
+| `Chart.yaml`               | Umbrella chart metadata + dependency (`tempo`)         |
+| `values.yaml`              | All overrides — base tuning **merged** with LDC prod overrides |
+| `values-eks.yaml`          | EKS overlay — `coredns`, ingester `gp3` StorageClass   |
+| `values-gke.yaml`          | GKE overlay — `kube-dns` + gateway nginx `resolver`, `standard-rwo` |
+| `values-azure.yaml`        | AKS overlay — `coredns`, ingester `managed-csi` StorageClass |
+| `values-minikube.yaml`     | Minikube overlay — `kube-dns`, `standard` StorageClass, anti-affinity off (single node) |
+| `Charts/adopt-tempo.sh`    | One-time Helm ownership-annotation adoption script       |
+| `Charts/collect-live.sh`   | Dumps live cluster state for a values.yaml parity diff  |
+| `charts/`                  | *Generated* — vendored subchart tgz (tempo-distributed 2.26.2) via `helm dependency build` |
+| `Chart.lock`               | *Generated* — pinned dependency digest                 |
 
-> Note: `values-ldc.yaml` (bucket `o11y-traces`, replica parity, HTTPRoute) was **merged into `values.yaml`** — a single `-f values.yaml` now carries everything for LDC.
+> Note: the former `values-ldc-prod.yaml` (bucket `o11y-traces`, replica parity, HTTPRoute) was **merged into `values.yaml`** — a single `-f values.yaml` now carries everything for LDC. No such file exists and it must **not** be passed to `helm install -f`.
 
 ## 3. Architecture
 
@@ -91,7 +95,7 @@ dependencies:
 ## 4. Deployment
 
 ```bash
-# dependencies are vendored — run build first only if charts/ is missing
+# dependencies are NOT committed — build them first (produces charts/ + Chart.lock)
 helm dependency build .
 
 helm upgrade --install tempo . -n observability -f values.yaml
@@ -99,11 +103,29 @@ helm upgrade --install tempo . -n observability -f values.yaml
 # note: do NOT use --reuse-values on the first install
 ```
 
+### Deploy to another cluster
+
+Every `values-<cluster>.yaml` is a **thin overlay** — it only carries cloud-specific deltas (cluster DNS, ingester StorageClass, and for GKE the gateway nginx `resolver`). Always layer it *on top of* the base:
+
+```bash
+helm upgrade --install tempo . -n observability \
+  -f values.yaml -f values-eks.yaml        # or -f values-gke.yaml / -f values-azure.yaml
+```
+
+| Overlay | Cluster DNS | Ingester StorageClass | Also sets |
+|---------|-------------|----------------------|-----------|
+| `values-eks.yaml`     | `coredns`   | `gp3`          | optional nodeSelector/tolerations (commented) |
+| `values-gke.yaml`     | `kube-dns`  | `standard-rwo` | gateway nginx `resolver: kube-dns.kube-system.svc.cluster.local.` |
+| `values-azure.yaml`   | `coredns`   | `managed-csi`  | optional nodeSelector/tolerations (commented) |
+| `values-minikube.yaml`| `kube-dns`  | `standard`     | gateway nginx `resolver`; **disables ingester anti-affinity** — the upstream default would block scheduling on a single node |
+
+Each overlay's bucket/S3 endpoint, replica counts, and HTTPRoute still come from `values.yaml`; point those at the target cluster's MinIO before the first install there.
+
 Pre-requisites:
 
 - Namespace `observability`; release name `tempo`.
 - External MinIO reachable at `minio.ldc.opstree.dev:9000`, bucket `o11y-traces`.
-- The old `tempo` HTTPRoute deleted (see [§1](#1-why-this-chart-exists)).
+- The live `tempo` resources **adopted** via `../adopt-tempo.sh` — including the HTTPRoute; do not delete it (see [§1](#1-why-this-chart-exists)).
 - **ServiceMonitor CRD** (`monitoring.coreos.com/v1`) must exist — VictoriaMetrics operator's prometheus-converter converts them to `VMServiceScrape`.
 
 ### Ingress / route
@@ -280,12 +302,42 @@ kubectl get vmservicescrape -n observability                    # converted CRs
 
 ## 9. Upgrade from Plain Manifests (cutover)
 
-The old LDC Tempo ran as plain manifests. The cutover used `adopt-tempo-helm.sh` to stamp Helm ownership annotations onto the live resources (Deployments, StatefulSets, Services, ConfigMaps, ServiceAccount, HTTPRoute, PDBs, ServiceMonitors) before `helm upgrade --install` — so Helm adopts them instead of creating duplicates.
+The old LDC Tempo ran as plain manifests. The cutover used `../adopt-tempo.sh` to stamp Helm ownership annotations onto the live resources (Deployments, StatefulSets, Services, ConfigMaps, ServiceAccount, HTTPRoute, PDBs, ServiceMonitors) before `helm upgrade --install` — so Helm adopts them instead of creating duplicates. Because the HTTPRoute is adopted rather than deleted, there is no name conflict to work around.
 
 ```bash
-./adopt-tempo-helm.sh                     # one-time, against live cluster
+../adopt-tempo.sh                        # one-time, against live cluster
 helm upgrade --install tempo . -n observability -f values.yaml
 ```
+
+It patches **only** `meta.helm.sh/release-name` / `-namespace` annotations (plus labels) — it never deletes, restarts, or alters a spec, so it is safe against live resources.
+
+### Collect live state first (optional, pre-cutover)
+
+Before touching the cluster, `../collect-live.sh` snapshots the live state so you have something to diff this chart against:
+
+```bash
+../collect-live.sh observability                  # <namespace> is required
+../collect-live.sh observability my-cluster-ctx    # optional [kube-context] as 2nd positional arg
+```
+
+It writes a timestamped folder `ldc-live-dump-<YYYYmmdd-HHMMSS>/` containing:
+
+| File | Contents |
+|------|----------|
+| `01-configmaps.yaml` | all ConfigMaps in the namespace |
+| `02-workloads.yaml`  | Deployments / StatefulSets / DaemonSets / Jobs |
+| `03-scaling-network-storage.yaml` | HPAs, Services, Ingress, PVCs |
+| `04-secrets.yaml`    | Secret manifests via `kubectl get secrets -o yaml` — ⚠️ includes base64 `data` keys, i.e. recoverable values |
+| `05-routes.yaml`     | HTTPRoute / Ingress / Gateway / NetworkPolicy |
+| `06-rbac-sa.yaml`    | ServiceAccounts, Roles, RoleBindings |
+| `07-namespace.yaml`  | namespace + labels |
+| `tempo.yaml`         | Tempo config, extracted from the `tempo-config` ConfigMap |
+| `overrides.yaml`     | stream overrides, extracted from the `tempo-config` ConfigMap |
+| `context.txt`        | cluster/context identity |
+
+> ⚠️ The dump folder is written to the **current working directory** and `04-secrets.yaml` contains base64-encoded secret values. Treat the whole folder as sensitive — don't commit it, and delete it after the parity diff.
+
+`tempo.yaml` + `overrides.yaml` are the two that matter for a **values.yaml parity diff** — they are what the live Tempo is actually running, so diffing them against this chart's rendered `tempo` configmap catches drift that resource-level comparison misses.
 
 ### Known cutover gotchas (all solved)
 

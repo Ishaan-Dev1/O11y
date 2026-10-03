@@ -12,12 +12,13 @@
 # or modify the spec of any resource. Safe to run against live resources.
 #
 # Run this BEFORE `helm upgrade --install`:
-#   helm upgrade --install tempo . -n observability \
-#     -f values.yaml -f values-ldc-prod.yaml
+#   cd distributed
+#   helm dependency build .
+#   helm upgrade --install tempo . -n observability -f values.yaml
 #
 # NOTE: adopting the HTTPRoute "tempo" means you can SKIP the
-# `kubectl delete httproute tempo -n observability` step that
-# values-ldc-prod.yaml warns about - helm will adopt it instead.
+# `kubectl delete httproute tempo -n observability` step that older
+# docs warned about - helm will adopt it instead.
 # ==============================================================================
 
 set -euo pipefail

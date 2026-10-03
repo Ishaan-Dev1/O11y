@@ -34,10 +34,10 @@ dependencies:
 | `Chart.yaml`          | Umbrella metadata + dep (`tempo` → grafana-community/tempo 2.2.2) |
 | `values.yaml`         | Base config: monolithic mode, S3/MinIO storage, metric generator  |
 | `values-minikube.yaml`| Minikube overlay — deltas only, deep-merged over `values.yaml`    |
-| `charts/`             | Vendored subchart tgz (tempo 2.2.2)                               |
-| `Chart.lock`          | Pinned dependency digest                                          |
+| `charts/`             | *Generated* — vendored subchart tgz (tempo 2.2.2) via `helm dependency build` |
+| `Chart.lock`          | *Generated* — pinned dependency digest; not committed                |
 
-**Naming:** no `nameOverride` / `fullnameOverride` / alias — resource names flow from the release name. Install with release name `tempo` so everything is `tempo` (see `naming-convention.md` at the repo root).
+**Naming:** no `nameOverride` / `fullnameOverride` / alias — resource names flow from the release name. Install with release name `tempo` so everything is `tempo`. Because nothing pins the naming, **never set `nameOverride` / `fullnameOverride` after the first install** — doing so rewrites every object name and Helm rejects the upgrade.
 
 ## 2. Architecture
 
@@ -269,7 +269,7 @@ kubectl delete pvc -n monitoring <pvc-name>
 | No spans visible | confirm traces are sent to OTLP `4317`/`4318`, not the query port `3200` |
 | High memory on ingester | shorten `trace_idle_period`/`flush_check_period` (already 30s); check `max_block_bytes` |
 | Metrics missing in VictoriaMetrics | `vminsert-vm.monitoring.svc:8480` resolvable from the pod; `send_exemplars` needs a compatible receiver |
-| Immutable selector errors on upgrade | never change release name / add `nameOverride` after first install (see `naming-convention.md`) |
+| Immutable selector errors on upgrade | never change release name / add `nameOverride` after first install — names derive from the release name |
 
 ---
 
