@@ -84,6 +84,8 @@ done
 | `roles/logging.viewer` | Read logs |
 | `roles/compute.viewer` | Read LB, backend and instance details |
 
+![image](images/gcp-sa-permission.png)
+
 ## 6. Step 3: Create the service account key
 
 ```bash
@@ -138,6 +140,8 @@ ALB metrics are exported to Cloud Monitoring automatically under `loadbalancing.
 3. Authentication: **Google JWT File**. Upload the same key.
 4. Click **Save & test**.
 
+![image](images/gcp-ds.png)
+
 ## 10. Step 7: Import the dashboard
 
 1. **Dashboards -> New -> Import**, upload the dashboard JSON.
@@ -163,6 +167,9 @@ ALB metrics are exported to Cloud Monitoring automatically under `loadbalancing.
 | Latency | Total and backend percentiles, p95 by backend, frontend TCP RTT |
 | Bandwidth | Request and response throughput, egress by backend |
 | Logs | LB-generated errors, backend 5xx, Cloud Armor denies, config changes, all INFO requests |
+
+
+![image](images/gcp-alb.png)
 
 ## 11. Step 8: Validate
 
