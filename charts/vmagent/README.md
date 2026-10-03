@@ -8,7 +8,7 @@ Purpose: run an agent in a **vcluster or leaf cluster** that scrapes kube-state-
 |---|---|
 | VMAgent | `quay.io/opstree/victoriametrics-vmagent:v1.141.0` |
 
-appVersion `v1.141.0` — matches the [`VictoriaMetrics`](../VictoriaMetrics/Charts/README.md) stack version.
+appVersion `v1.141.0` — matches the [`VictoriaMetrics`](../victoriametrics/README.md) stack version.
 
 ## Contents
 
@@ -52,7 +52,7 @@ The Deployment mounts an `emptyDir` at `/vmagent-data` for the **remote-write WA
 ## 3. Deploy
 
 ```bash
-cd VMAgent/Charts
+cd charts/vmagent
 
 # no `helm dependency build` needed — no deps
 
@@ -89,7 +89,7 @@ Then applies three `metric_relabel_configs`:
 
 The last two are a pair: **promote** REMS pod labels into real metric labels, then **delete** the originals so you don't pay for both. Net effect — a `rems/environment` pod label arrives at VictoriaMetrics as a metric label named `rems_environment`.
 
-> The target has a **trailing dot** (`cluster.local.:8080`). Valid FQDN form, resolves fine — but keep it consistent if you edit it; the same string appears in [`VictoriaMetrics`](../VictoriaMetrics/Charts/README.md).
+> The target has a **trailing dot** (`cluster.local.:8080`). Valid FQDN form, resolves fine — but keep it consistent if you edit it; the same string appears in [`VictoriaMetrics`](../victoriametrics/README.md).
 
 ## 5. Key values
 
@@ -129,9 +129,9 @@ Three relationships to keep straight:
 
 | Chart | Relationship |
 |---|---|
-| [`KubeStateMetrics`](../KubeStateMetrics/Charts/README.md) | Its service is this agent's **only scrape target** — must exist in `monitoring` |
-| [`VictoriaMetrics`](../VictoriaMetrics/Charts/README.md) | The **central** store; same `v1.141.0` version family |
-| [`OtelCollector`](../OtelCollector/Charts/README.md) | Also scrapes KSM, but remote-writes **metrics** via `prometheusremotewrite`. Running both means KSM metrics arrive twice — via the collector and via this agent |
+| [`KubeStateMetrics`](../kube-state-metrics/README.md) | Its service is this agent's **only scrape target** — must exist in `monitoring` |
+| [`VictoriaMetrics`](../victoriametrics/README.md) | The **central** store; same `v1.141.0` version family |
+| [`OtelCollector`](../otel-collector/README.md) | Also scrapes KSM, but remote-writes **metrics** via `prometheusremotewrite`. Running both means KSM metrics arrive twice — via the collector and via this agent |
 
 That last row is the one to watch: the collector's `prometheusremotewrite` exporter and this agent can both scrape the same targets. If you see duplicated series in central VM, this is why.
 

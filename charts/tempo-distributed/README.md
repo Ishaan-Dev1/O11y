@@ -57,8 +57,8 @@ dependencies:
 | `values-gke.yaml`          | GKE overlay — `kube-dns` + gateway nginx `resolver`, `standard-rwo` |
 | `values-azure.yaml`        | AKS overlay — `coredns`, ingester `managed-csi` StorageClass |
 | `values-minikube.yaml`     | Minikube overlay — `kube-dns`, `standard` StorageClass, anti-affinity off (single node) |
-| `Charts/adopt-tempo.sh`    | One-time Helm ownership-annotation adoption script       |
-| `Charts/collect-live.sh`   | Dumps live cluster state for a values.yaml parity diff  |
+| `adopt-tempo.sh`    | One-time Helm ownership-annotation adoption script       |
+| `collect-live.sh`   | Dumps live cluster state for a values.yaml parity diff  |
 | `charts/`                  | *Generated* — vendored subchart tgz (tempo-distributed 2.26.2) via `helm dependency build` |
 | `Chart.lock`               | *Generated* — pinned dependency digest                 |
 
@@ -125,7 +125,7 @@ Pre-requisites:
 
 - Namespace `observability`; release name `tempo`.
 - External MinIO reachable at `minio.ldc.opstree.dev:9000`, bucket `o11y-traces`.
-- The live `tempo` resources **adopted** via `../adopt-tempo.sh` — including the HTTPRoute; do not delete it (see [§1](#1-why-this-chart-exists)).
+- The live `tempo` resources **adopted** via `./adopt-tempo.sh` — including the HTTPRoute; do not delete it (see [§1](#1-why-this-chart-exists)).
 - **ServiceMonitor CRD** (`monitoring.coreos.com/v1`) must exist — VictoriaMetrics operator's prometheus-converter converts them to `VMServiceScrape`.
 
 ### Ingress / route
@@ -302,10 +302,10 @@ kubectl get vmservicescrape -n observability                    # converted CRs
 
 ## 9. Upgrade from Plain Manifests (cutover)
 
-The old LDC Tempo ran as plain manifests. The cutover used `../adopt-tempo.sh` to stamp Helm ownership annotations onto the live resources (Deployments, StatefulSets, Services, ConfigMaps, ServiceAccount, HTTPRoute, PDBs, ServiceMonitors) before `helm upgrade --install` — so Helm adopts them instead of creating duplicates. Because the HTTPRoute is adopted rather than deleted, there is no name conflict to work around.
+The old LDC Tempo ran as plain manifests. The cutover used `./adopt-tempo.sh` to stamp Helm ownership annotations onto the live resources (Deployments, StatefulSets, Services, ConfigMaps, ServiceAccount, HTTPRoute, PDBs, ServiceMonitors) before `helm upgrade --install` — so Helm adopts them instead of creating duplicates. Because the HTTPRoute is adopted rather than deleted, there is no name conflict to work around.
 
 ```bash
-../adopt-tempo.sh                        # one-time, against live cluster
+./adopt-tempo.sh                        # one-time, against live cluster
 helm upgrade --install tempo . -n observability -f values.yaml
 ```
 
@@ -313,11 +313,11 @@ It patches **only** `meta.helm.sh/release-name` / `-namespace` annotations (plus
 
 ### Collect live state first (optional, pre-cutover)
 
-Before touching the cluster, `../collect-live.sh` snapshots the live state so you have something to diff this chart against:
+Before touching the cluster, `./collect-live.sh` snapshots the live state so you have something to diff this chart against:
 
 ```bash
-../collect-live.sh observability                  # <namespace> is required
-../collect-live.sh observability my-cluster-ctx    # optional [kube-context] as 2nd positional arg
+./collect-live.sh observability                  # <namespace> is required
+./collect-live.sh observability my-cluster-ctx    # optional [kube-context] as 2nd positional arg
 ```
 
 It writes a timestamped folder `ldc-live-dump-<YYYYmmdd-HHMMSS>/` containing:

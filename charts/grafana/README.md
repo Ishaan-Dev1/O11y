@@ -84,7 +84,7 @@ The bitnami chart creates this secret automatically on first install (random 20-
 ## 3. Deploy
 
 ```bash
-cd Charts
+cd charts/grafana
 
 # Pull/vendor the sub-charts (after any Chart.yaml change)
 helm dependency update .

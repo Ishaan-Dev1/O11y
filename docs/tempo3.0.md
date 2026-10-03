@@ -19,7 +19,7 @@ Tempo 3.0 makes the "Project Rhythm" architecture the default. It puts a **Kafka
 
 ## 2. Tempo 2.x: how it worked
 
-![tempo 2 architecture](images/tempo2.png)
+![tempo 2 architecture](../images/tempo2.png)
 
 1. The distributor picked 3 ingesters per trace (hash ring) and sent the same spans to all three.
 2. Each ingester buffered the data and flushed its own block to object storage, so the same trace was stored up to 3 times.
@@ -34,7 +34,7 @@ Tempo 3.0 makes the "Project Rhythm" architecture the default. It puts a **Kafka
 
 ## 3. Tempo 3.0: how it works
 
-![tempo 3 architecture](images/tempo3.png)
+![tempo 3 architecture](../images/tempo3.png)
 
 
 

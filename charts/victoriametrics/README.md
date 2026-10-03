@@ -74,7 +74,7 @@ Enabled components in `values.yaml`:
 ## 4. Deploy
 
 ```bash
-cd VictoriaMetrics/Charts
+cd charts/victoriametrics
 helm dependency build .
 
 kubectl create namespace monitoring   # must match the namespaces hard-coded in extraObjects

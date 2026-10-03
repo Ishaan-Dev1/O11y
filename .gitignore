@@ -1,0 +1,42 @@
+# Helm vendored dependencies — regenerate with `helm dependency build <chart>`
+charts/*.tgz
+charts/*/charts/
+*.tgz
+
+# Dependency locks are intentionally NOT committed — resolved at build time
+# from the `helm repo add` list in README.md.
+charts/*/Chart.lock
+
+# Helm render / lint output
+*.tgz.bak
+*-rendered.yaml
+values.rendered.yaml
+
+# Local cluster state dumps (see charts/tempo-distributed/collect-live.sh)
+collect-live*.txt
+cluster-live*.txt
+*-live-diff*.txt
+
+# Secrets and credentials — never commit NEW ones.
+# Anchored to the repo root and to chart dirs so that intentionally tracked
+# files like manifests/loki-cron/secret.yaml (MinIO dev creds) are not caught.
+/secret.yaml
+charts/*/secret.yaml
+*.secret.local.yaml
+*.pem
+*.key
+kubeconfig
+.env
+.env.*
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Scratch
+tmpcharts-*/
+*.bak

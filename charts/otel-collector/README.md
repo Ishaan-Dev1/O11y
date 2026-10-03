@@ -58,7 +58,7 @@ Resource names come from `collector.fullnameOverride: otel-collector-collector`.
 ## 3. Deploy
 
 ```bash
-cd OtelCollector/Charts
+cd charts/otel-collector
 helm dependency build .
 
 kubectl create namespace observability
@@ -98,7 +98,7 @@ All three destinations are **in-cluster** short names, resolved in the collector
 
 > The `debug` exporter is wired into the **logs** pipeline only, on purpose — it makes log-pipeline problems visible without doubling trace or metric volume. Comment it out in production if stdout noise is a problem.
 
-> There is a sibling COE_DEV variant of this chart that sends to **external** HTTPS endpoints (`tempo.opstree.net`, `loki.opstree.net`, `vm.opstree.net`) and uses a different REMS label schema (`rems.service/*` instead of `rems/*`). It is **not** in this repo — this chart is the LDC in-cluster variant. See [OtelKubeEvents note](../OtelKubeEvents/Charts/README.md) for why the two differ.
+> There is a sibling COE_DEV variant of this chart that sends to **external** HTTPS endpoints (`tempo.opstree.net`, `loki.opstree.net`, `vm.opstree.net`) and uses a different REMS label schema (`rems.service/*` instead of `rems/*`). It is **not** in this repo — this chart is the LDC in-cluster variant. See [OtelKubeEvents note](../otel-kube-events/README.md) for why the two differ.
 
 ## 6. Scrape targets you own
 
@@ -110,7 +110,7 @@ Two of the three dependencies exist purely to be scraped. Both are toggleable:
 | `kubeStateMetrics.enabled`     | *(see values)* | KSM deployment, scraped by this collector |
 | `nodeExporter.enabled`         | *(see values)* | node-exporter deployment, scraped by this collector |
 
-If you would rather use the standalone `KubeStateMetrics` chart in this repo, set `kubeStateMetrics.enabled: false` here and point the collector's `prometheus` receiver at that instead — see [KubeStateMetrics](../KubeStateMetrics/Charts/README.md).
+If you would rather use the standalone `KubeStateMetrics` chart in this repo, set `kubeStateMetrics.enabled: false` here and point the collector's `prometheus` receiver at that instead — see [KubeStateMetrics](../kube-state-metrics/README.md).
 
 ## 7. Key values
 

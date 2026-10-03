@@ -3,7 +3,7 @@
 > **This chart is an empty stub.** `Chart.yaml` and `values.yaml` are both **0 bytes**. It will not install, and it deploys nothing.
 >
 > ```
-> $ helm template t OtelKubeEvents/Charts
+> $ helm template t charts/otel-kube-events
 > Error: validation: chart.metadata.name is required
 > ```
 
@@ -47,16 +47,16 @@ If you build this chart out from that ConfigMap, note the config assumes a **dif
 |---|---|---|
 | Loki tenant | `X-Scope-OrgID: infra-eks-log` — **multi-tenant** | single tenant, no org header |
 | Loki auth | `basicauth/loki` authenticator | no auth on the OTLP path |
-| Metrics target | `vmsingle-vm` | `vminsert-vm` (see [`VictoriaMetrics`](../VictoriaMetrics/Charts/README.md)) |
+| Metrics target | `vmsingle-vm` | `vminsert-vm` (see [`VictoriaMetrics`](../victoriametrics/README.md)) |
 | EKS? | Org ID is named `infra-eks-log` | LDC in-cluster |
 
-So this is an **EKS-flavoured** config sitting in the LDC directory. Before wiring it up, decide which topology it is actually meant for — the multi-tenant `X-Scope-OrgID` header in particular will not match how [`Loki`](../Loki/Charts/README.md) is deployed here.
+So this is an **EKS-flavoured** config sitting in the LDC directory. Before wiring it up, decide which topology it is actually meant for — the multi-tenant `X-Scope-OrgID` header in particular will not match how [`Loki`](../loki-distributed/README.md) is deployed here.
 
 Note it also references a `basicauth/loki` authenticator, which means a `basicauth` extension (typically pulling from a Kubernetes Secret) must be added — that part is **not** in the ConfigMap.
 
 ## To actually implement this
 
-1. Move `kube-events-cm.yaml` into `values.yaml` under a `config:` key (the shape [`OtelCollector`](../OtelCollector/Charts/README.md) uses).
+1. Move `kube-events-cm.yaml` into `values.yaml` under a `config:` key (the shape [`OtelCollector`](../otel-collector/README.md) uses).
 2. Write a real `Chart.yaml` — ideally as a dependency on `open-telemetry/opentelemetry-collector`, not a hand-rolled template.
 3. Add the `basicauth` extension and its Secret reference.
 4. Settle the tenant question above — `X-Scope-OrgID` presence or absence.

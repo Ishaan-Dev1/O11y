@@ -41,7 +41,7 @@ Chart version `5.30.0` is the upstream *Helm chart* release; the image tag `2.18
 ## 3. Deploy
 
 ```bash
-cd KubeStateMetrics/Charts
+cd charts/kube-state-metrics
 helm dependency build .
 
 helm upgrade --install kube-state-metrics . -n monitoring -f values.yaml --create-namespace
@@ -59,9 +59,9 @@ vm-kube-state-metrics.monitoring.svc.cluster.local:8080
 
 That string appears in:
 
-- [`VMAgent`](../VMAgent/Charts/values.yaml) — as its scrape target
-- [`VictoriaMetrics`](../VictoriaMetrics/Charts/values.yaml) — the in-chart `kube-state-metrics` block, which sets the *same* override
-- [`VictoriaMetrics/values-ksm-only.yaml`](../VictoriaMetrics/Charts/values-ksm-only.yaml)
+- [`VMAgent`](../vmagent/values.yaml) — as its scrape target
+- [`VictoriaMetrics`](../victoriametrics/values.yaml) — the in-chart `kube-state-metrics` block, which sets the *same* override
+- [`VictoriaMetrics/values-ksm-only.yaml`](../victoriametrics/values-ksm-only.yaml)
 
 **So the namespace must be `monitoring`.** A different namespace silently breaks every scraper that targets this service.
 
@@ -91,8 +91,8 @@ There are **three** places KSM can come from in this repo, and they are alternat
 | Source | Chart version | Use when |
 |---|---|---|
 | **This chart** | `5.30.0` | Standalone KSM, no VM stack |
-| [`OtelCollector`](../OtelCollector/Charts/README.md) | `6.3.0` | The collector owns KSM as a scrape target |
-| [`VictoriaMetrics`](../VictoriaMetrics/Charts/README.md) | via `victoria-metrics-k8s-stack` | VM stack owns KSM (`values-ksm.yaml` / `values-ksm-only.yaml`) |
+| [`OtelCollector`](../otel-collector/README.md) | `6.3.0` | The collector owns KSM as a scrape target |
+| [`VictoriaMetrics`](../victoriametrics/README.md) | via `victoria-metrics-k8s-stack` | VM stack owns KSM (`values-ksm.yaml` / `values-ksm-only.yaml`) |
 
 The KSM version differs between them (`5.30.0` here vs `6.3.0` under the collector). That is not a conflict — they are separate Helm releases — but be aware you are running different KSM majors in different clusters.
 

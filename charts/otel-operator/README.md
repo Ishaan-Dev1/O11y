@@ -50,7 +50,7 @@ The three templates live in this umbrella chart, **not** upstream — they are w
 ## 3. Deploy
 
 ```bash
-cd OtelOperator/Charts
+cd charts/otel-operator
 helm dependency build .
 
 helm upgrade --install otel-operator . -n <namespace> -f values.yaml
@@ -111,4 +111,4 @@ Java and Go use `opstree` mirrors; the rest come from upstream GHCR.
 | Injection doesn't happen on some pods | Check the pod's labels match the `Instrumentation` CR's `selector`. Namespace limits also apply |
 | Webhook failures after a reinstall | Delete the cert Secret — `recreate: false` means it won't be regenerated automatically |
 | Operator pod not scheduling | Required anti-affinity needs one eligible node per replica; lower `replicaCount` if the cluster is small |
-| Traces missing downstream | Instrumentation injects OTLP env vars — the target is the collector's `4317`/`4318`. See [OtelCollector](../OtelCollector/Charts/README.md) |
+| Traces missing downstream | Instrumentation injects OTLP env vars — the target is the collector's `4317`/`4318`. See [OtelCollector](../otel-collector/README.md) |
