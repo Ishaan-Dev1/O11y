@@ -38,8 +38,10 @@ dependencies:
 | `Chart.yaml`          | Umbrella metadata + deps (`logging` → loki, `fluent-bit`)          |
 | `values.yaml`         | Base config: Monolithic mode, S3/MinIO storage, Fluent Bit pipeline |
 | `values-minikube.yaml`| Minikube overlay — deltas only, deep-merged over `values.yaml`     |
-| `charts/`             | Vendored subchart tgz (loki 18.7.6, fluent-bit 0.0.2)              |
-| `Chart.lock`          | Pinned dependency digests                                          |
+| `charts/`             | *Generated* — vendored subchart tgz, created by `helm dependency build` (not committed) |
+| `Chart.lock`          | *Generated* — pinned dependency digests, written by `helm dependency build` (not committed) |
+
+`charts/` and `Chart.lock` are **not** in version control. Run `helm dependency build` once after cloning (or `helm dependency update` to move to newer subchart versions) before `helm install`/`helm template`, otherwise Helm fails with `found in Chart.yaml, but missing in charts/ directory: loki, fluent-bit`.
 
 `fullnameOverride: loki` fixes the resource prefix, so the gateway is always `<namespace>/loki-gateway` and Fluent Bit can resolve it statically.
 
@@ -123,7 +125,7 @@ loki-gateway-xxxxxxxxxx-xxxxx   2/2     Running   0          <age>
 loki-fluent-bit-xxxxx           1/1     Running   0          <age>
 ```
 
-> The MinIO endpoint (`minio.ldc.opstree.dev:9000`) is reachable from the minikube node in this environment. If it isn't in yours, switch to local filesystem storage by uncommenting the `loki.storage.filesystem` block in `values-minikube.yaml` and setting `storage.type: filesystem`.
+> `values-minikube.yaml` already forces **filesystem** storage (`loki.storage.type: filesystem`, chunks under `/var/loki/chunks` on the 5 Gi PVC), so the minikube install needs **no MinIO/S3 at all** — the base file's `minio.ldc.opstree.dev` S3 block is overridden and does not render. The reverse also holds: to use S3 in minikube instead, delete the `filesystem`/`type` keys from the overlay so the base S3 config wins.
 
 ## 6. Storage & Retention
 

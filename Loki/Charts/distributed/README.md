@@ -317,7 +317,42 @@ end
 
 Labels become Loki **index labels** (streams). Keep them low-cardinality: namespace, pod, container, service/app name, and REMS groupings (`rems/application_group`, `rems/service`, `rems/environment`) plus `cluster=base-vcluster`.
 
-### 7.5 Design decisions (as implemented)
+### 7.5 Second label path — OTLP resource attributes (`otlp_config`)
+
+There are **two independent ways** a label reaches a Loki stream in this chart, and they do not interact:
+
+| Path | Who sends it | Governed by | Loki endpoint |
+|------|--------------|-------------|---------------|
+| Kubernetes log scrape | Fluent Bit (this chart) | the `labels` directive in [§7.4](#74-output-plugin--labels--shipping) | `/loki/api/v1/push` (native push) |
+| OTLP-native ingest | apps / OTel Collector | `otlp_config` below | `/otlp/v1/logs` |
+
+The gateway exposes both routes (upstream default, not overridden here), so OTLP clients post straight to `http://logging-loki-gateway.logging.svc.cluster.local:80/otlp/v1/logs`.
+
+```yaml
+logging:
+  loki:
+    limits_config:
+      otlp_config:
+        resource_attributes:
+          ignore_defaults: false
+          attributes_config:
+            - action: index_label
+              regex: rems_environment
+            - action: index_label
+              regex: rems_service
+            - action: index_label
+              regex: rems_application_group
+            - action: index_label
+              regex: rems_category
+```
+
+- **`action: index_label`** — promotes a matching attribute to a Loki **index label**. Valid actions are `structured_metadata` and `drop` for all attribute types; `index_label` is additionally allowed for **resource** attributes only (log/scope attributes can't be index labels).
+- **`regex:`** — selects attributes by pattern. The sibling key `attributes:` does the same with an explicit name list; both are valid in an `attributes_config` entry, pick whichever fits. These four are unanchored patterns, so `regex: rems_service` also matches a hypothetical `rems_service_tier` — anchor with `^...$` if that matters.
+- **`ignore_defaults: false`** — Loki keeps its built-in default set of 18 attributes as index labels *in addition to* the four above: `service.name`, `service.namespace`, `service.instance.id`, `deployment.environment`, `deployment.environment.name`, `cloud.region`, `cloud.availability_zone`, `k8s.cluster.name`, `k8s.namespace.name`, `k8s.pod.name`, `k8s.container.name`, `container.name`, `k8s.replicaset.name`, `k8s.deployment.name`, `k8s.statefulset.name`, `k8s.daemonset.name`, `k8s.cronjob.name`, `k8s.job.name`. Set it to `true` to drop that default set and index **only** what you list — cheaper, but you lose `k8s.*`/`service.*` on OTLP streams.
+- **Cardinality cost** — every `index_label` multiplies the stream count per unique value combination. The four `rems_*` attributes are deliberately low-cardinality (team/service/category), which is what makes them safe as index labels. Anything per-request or per-user belongs in `structured_metadata`, not here.
+- Fluent Bit's own scrape is unaffected by any of this — see the `labels` directive in §7.4.
+
+### 7.6 Design decisions (as implemented)
 
 | Concern                 | Decision                                                       | Why |
 |-------------------------|----------------------------------------------------------------|-----|

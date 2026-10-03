@@ -2,7 +2,7 @@
 
 Automated backup of a **Loki (Monolithic)** instance's on-disk data to an **S3-compatible bucket (MinIO)**. A `CronJob` runs the `aws-cli` container daily at **02:00**, syncs Loki's `chunks`, `index` and `wal` directories (from the Loki PVC) into `s3://<bucket>/<dir>/`, and keeps 3 job histories.
 
-> The PVC claim name `storage-logging-0` and mount path `/var/loki` in these manifests match a Loki StatefulSet released as `logging` with a `storage-...` volumeClaimTemplate (see `Standalone-charts/Loki`).
+> ⚠️ The PVC claim name `storage-logging-0` is **hard-coded** in `cron.yaml` and `single-job.yaml`, and the mount path is `/var/loki`. It matches a Loki StatefulSet named `logging` with a `storage-...` volumeClaimTemplate — i.e. a plain-manifest Loki, **not** either chart in this repo (both set `fullnameOverride: loki` and would create a `loki-`-prefixed PVC). Before deploying, confirm the claim with `kubectl get pvc -n logging` and update both manifests if it differs.
 
 ## Table of Contents
 
@@ -21,7 +21,7 @@ Automated backup of a **Loki (Monolithic)** instance's on-disk data to an **S3-c
 | File               | Kind                 | What it does                                                                 |
 |--------------------|----------------------|------------------------------------------------------------------------------|
 | `secret.yaml`      | `Secret`             | MinIO/S3 credentials + endpoint + bucket name (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `MINIO_ENDPOINT_URL`, `S3_BUCKET`) |
-| `configmap.yaml`   | `ConfigMap`          | Holds `backup.sh` — the backup logic (sync `chunks`/`index`/`wal` → S3)       |
+| `config-map.yaml`  | `ConfigMap`          | Holds `backup.sh` — the backup logic (sync `chunks`/`index`/`wal` → S3)       |
 | `cron.yaml`        | `CronJob`            | Schedules the backup every day at `02:00` (`0 2 * * *`), `Forbid` concurrency |
 | `single-job.yaml`  | `Job`                | One-off copy of the backup pod — run it manually to test or trigger a backup  |
 
@@ -59,7 +59,7 @@ s3://loki-backup/
 
 ## 3. Prerequisites
 
-- Loki (Monolithic) deployed in namespace `logging` with PVC `storage-logging-0` (matches `Standalone-charts/Loki`).
+- Loki deployed in namespace `logging` with a PVC named `storage-logging-0` (the claim is hard-coded in the manifests — verify with `kubectl get pvc -n logging`).
 - MinIO/S3 endpoint reachable from the cluster.
 - The `loki-backup` bucket already exists in MinIO (the script does **not** create it).
 
@@ -71,7 +71,7 @@ kubectl create ns logging        # if not present
 
 # 2. Secret + ConfigMap (edit credentials/endpoint/bucket first!)
 kubectl apply -f secret.yaml
-kubectl apply -f configmap.yaml
+kubectl apply -f config-map.yaml
 
 # 3. CronJob
 kubectl apply -f cron.yaml

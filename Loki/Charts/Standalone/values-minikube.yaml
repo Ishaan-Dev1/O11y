@@ -1,0 +1,103 @@
+# Minikube overrides for the standalone monolithic Loki chart.
+# Usage: helm install loki . -f values.yaml -f values-minikube.yaml -n <namespace>
+#
+# Differences vs. base values.yaml:
+#   * No cloud/team tolerations or nodeSelectors (single-node minikube has no such taints)
+#   * Smaller resource requests/limits and PVC (5Gi, storageClass standard)
+#   * No autoscaling and no ServiceMonitors (no Prometheus Operator in minikube)
+#   * Filesystem storage (PVC) instead of S3/MinIO
+#   * CoreDNS is exposed as "kube-dns" in minikube
+#   * Fluent Bit forwards to loki-gateway in the deploy namespace (default: monitoring)
+logging:
+  global:
+    dnsService: "kube-dns"
+
+  monitoring:
+    serviceMonitor:
+      enabled: false
+
+  gateway:
+    replicas: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    tolerations: []
+    nodeSelector: {}
+
+  singleBinary:
+    replicas: 1
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: standard
+      accessModes:
+        - ReadWriteOnce
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1
+        memory: 1Gi
+    tolerations: []
+    nodeSelector: {}
+
+  chunksCache:
+    enabled: false
+  resultsCache:
+    enabled: false
+
+  # Filesystem storage backed by the single-binary PVC (no MinIO needed in minikube)
+  loki:
+    schemaConfig:
+      configs:
+        - from: 2024-04-01
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+    storage:
+      type: filesystem
+      filesystem:
+        chunks_directory: /var/loki/chunks
+        rules_directory: /var/loki/rules
+    compactor:
+      delete_request_store: filesystem
+      working_directory: /var/loki/compactor
+
+fluent-bit:
+  fluent-bit:
+    serviceMonitor:
+      enabled: false
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+    nodeSelector: {}
+    config:
+      outputs: |
+        [OUTPUT]
+            Name              loki
+            Match             *
+            host              loki-gateway.logging.svc.cluster.local
+            port              80
+            drop_single_key   Off
+            labels            namespace=$kubernetes['namespace_name'],pod=$kubernetes['pod_name'],container=$kubernetes['container_name'],service_name=$kubernetes['labels']['app'],name=$kubernetes['labels']['app.kubernetes.io/name'],application_group=$kubernetes['labels']['rems/application_group'],rems_service=$kubernetes['labels']['rems/service'],rems_environment=$kubernetes['labels']['rems/environment'],cluster=minikube
+            remove_keys       kubernetes

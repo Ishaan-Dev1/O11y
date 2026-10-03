@@ -64,21 +64,24 @@ logging:
       max_cache_freshness_per_query: 10m
       query_timeout: 300s
       volume_enabled: true
+      otlp_config:
+        resource_attributes:
+          ignore_defaults: false
+          attributes_config:
+            - action: index_label
+              regex: rems_environment
+            - action: index_label
+              regex: rems_service
+            - action: index_label
+              regex: rems_application_group
+            - action: index_label
+              regex: rems_category
     tracing:
       enabled: false
     querier:
       # Default is 4, if you have enough memory and CPU you can increase, reduce if OOMing
       max_concurrent: 4
     query_stats_enabled: true
-    # otlp_config:
-    #   resource_attributes:
-    #     attributes_config:
-    #       - action: index_label
-    #         attributes:
-    #           - rems_service
-    #           - rems_environment
-    #           - rems_application_group
-    #           - rems_category
     # pattern_ingester: controls the Loki pattern ingester component. Set enabled to true to enable pattern detection and extraction from logs.
     pattern_ingester:
       enabled: false
