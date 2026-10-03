@@ -1,0 +1,69 @@
+operator:
+  enabled: true
+  fullnameOverride: otel-operator
+  crds:
+    create: false
+  clusterRole:
+    create: false
+  role:
+    create: false
+  additionalLabels:
+    app: otel-operator
+  replicaCount: 2
+  securityContext:
+    runAsUser: 65532
+    runAsGroup: 65532
+    runAsNonRoot: true
+    fsGroup: 65532
+
+  manager:
+    image:
+      repository: quay.io/opstree/opentelemetry-operator
+      tag: 0.149.0-debian13
+
+    autoInstrumentationImage:
+      java:
+        repository: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java
+        tag: 2.27.0
+      nodejs:
+        repository: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-nodejs
+        tag: 0.74.0
+      go:
+        repository: quay.io/opstree/opentelemetry-autoinstrumentation-go
+        tag: 0.24.0
+      python:
+        repository: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-python
+        tag: 0.62b1
+      dotnet:
+        repository: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-dotnet
+        tag: 1.15.0
+      apacheHttpd:
+        repository: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-apache-httpd
+        tag: 1.0.4
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+    serviceMonitor:
+      enabled: false
+
+  admissionWebhooks:
+    create: true
+    certManager:
+      enabled: false
+    autoGenerateCert:
+      enabled: true
+      recreate: false
+      certPeriodDays: 3650
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: operator
+              app: otel-operator
+          topologyKey: kubernetes.io/hostname

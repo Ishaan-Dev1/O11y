@@ -1,0 +1,69 @@
+# ==============================================================================
+# values.yaml for standalone vmagent chart
+# Scrapes KSM inside the vcluster and remote-writes to central VMCluster.
+# No VM operator required on the target cluster.
+#
+# helm upgrade --install vmagent . -f values.yaml -n monitoring --create-namespace
+# ==============================================================================
+
+vmagent:
+  image:
+    repository: quay.io/opstree/victoriametrics-vmagent
+    tag: "v1.141.0"
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  # Labels to identify which vcluster/env this agent is running in
+  externalLabels:
+    cluster: "coe-prod"  # change per vcluster
+    
+
+  remoteWrite:
+    url: "https://vm.opstree.net/insert/0/prometheus/api/v1/write"
+    # Uncomment if your endpoint requires basic auth
+    # basicAuth:
+    #   username: ""
+    #   password: ""
+    # Uncomment if your endpoint requires bearer token
+    # bearerToken: ""
+
+  scrapeInterval: 30s
+
+  extraArgs:
+    promscrape.maxScrapeSize: 200MB
+    promscrape.dropOriginalLabels: "true"
+    promscrape.streamParse: "true"
+
+  # emptyDir for remote-write WAL buffer (lost on pod restart, fine for this use case)
+  dataDir: /vmagent-data
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # KSM scrape config
+  scrapeConfigs:
+    - job_name: kube-state-metrics
+      scrape_interval: 30s
+      static_configs:
+        - targets:
+            - "vm-kube-state-metrics.monitoring.svc.cluster.local.:8080"
+      metric_relabel_configs:
+        - action: labeldrop
+          regex: (uid|container_id|image_id)
+        - action: labelmap
+          regex: label_(rems_.+)
+        - action: labeldrop
+          regex: label_rems_.+
+
+  serviceAccount:
+    create: true
+    name: "vmagent"
+
+  rbac:
+    create: true

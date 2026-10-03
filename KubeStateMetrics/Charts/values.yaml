@@ -1,0 +1,43 @@
+# ==============================================================================
+# values.yaml for standalone kube-state-metrics chart
+# Deploy this on clusters that need KSM only (without the full vm-stack).
+# helm dep update && helm upgrade --install kube-state-metrics . -f values.yaml -n monitoring --create-namespace
+# ==============================================================================
+
+kube-state-metrics:
+  fullnameOverride: "vm-kube-state-metrics"
+  image:
+    registry: quay.io
+    repository: opstree/kube-state-metrics
+    tag: "2.18.0-debian13"
+  extraArgs:
+    - --metric-labels-allowlist=pods=[*]
+    - --metric-annotations-allowlist=pods=[*]
+    - --resources=certificatesigningrequests,configmaps,cronjobs,daemonsets,deployments,endpointslices,horizontalpodautoscalers,ingresses,jobs,leases,limitranges,mutatingwebhookconfigurations,namespaces,networkpolicies,nodes,persistentvolumeclaims,persistentvolumes,poddisruptionbudgets,pods,replicasets,replicationcontrollers,resourcequotas,secrets,services,statefulsets,storageclasses,validatingwebhookconfigurations,volumeattachments
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "8080"
+    port: 8080
+    targetPort: http-metrics
+  rbac:
+    create: true
+  serviceAccount:
+    create: true
+    name: "kube-sa"
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 8080
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3

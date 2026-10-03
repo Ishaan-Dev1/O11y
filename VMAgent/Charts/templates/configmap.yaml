@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vmagent.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "vmagent.labels" . | nindent 4 }}
+data:
+  scrape.yaml: |
+    global:
+      scrape_interval: {{ .Values.vmagent.scrapeInterval }}
+      external_labels:
+        {{- range $k, $v := .Values.vmagent.externalLabels }}
+        {{ $k }}: {{ $v | quote }}
+        {{- end }}
+
+    scrape_configs:
+      {{- toYaml .Values.vmagent.scrapeConfigs | nindent 6 }}

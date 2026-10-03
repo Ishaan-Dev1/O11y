@@ -11,6 +11,19 @@ Umbrella chart that deploys **Grafana 13.1**, a **PostgreSQL 18** backend, and *
 
 The Postgres image is a mirror of the official Docker postgres image (uid `70`, `PGDATA=/var/lib/postgresql/18/data`). The bitnami chart is configured with overrides so it drives that image instead of the bitnami one — see the `postgres:` block in `values.yaml`.
 
+## Contents
+
+1. [Prerequisites](#1-prerequisites)
+2. [Secrets — create these FIRST](#2-secrets--create-these-first)
+3. [Deploy](#3-deploy)
+4. [What gets deployed](#4-what-gets-deployed)
+5. [Custom domain / `grafana.ini` host URL](#5-custom-domain--grafanaini-host-url)
+6. [Datasources — what's in `values.yaml`](#6-datasources--whats-in-valuesyaml)
+7. [Valkey metrics — the Redis Exporter (why & how)](#7-valkey-metrics--the-redis-exporter-why--how)
+8. [Multi-platform deployment pattern](#8-multi-platform-deployment-pattern)
+9. [Deep dive: `values-gke.yaml`](#9-deep-dive-values-gkeyaml--what-you-can-edit-and-what-it-does)
+10. [Useful commands](#10-useful-commands)
+
 ---
 
 ## 1. Prerequisites
@@ -71,7 +84,7 @@ The bitnami chart creates this secret automatically on first install (random 20-
 ## 3. Deploy
 
 ```bash
-cd POC/grafana
+cd Charts
 
 # Pull/vendor the sub-charts (after any Chart.yaml change)
 helm dependency update .
@@ -94,6 +107,22 @@ kubectl get svc -n observability
 
 ## 4. What gets deployed
 
+### Chart files
+
+| File | Purpose |
+|---|---|
+| `Chart.yaml`              | Umbrella metadata + 3 subchart deps (`grafana`, `valkey`, `postgres`) |
+| `values.yaml`             | Base config — datasource list, Grafana ini, Postgres + Valkey tuning |
+| `values-gke.yaml`         | GKE overlay — `obs-node-pool` scheduling, `standard-rwo` storage |
+| `values-minikube.yaml`    | Minikube overlay — NodePort `30080`, `standard` storage |
+| `templates/datasource.yaml` | Renders `.Values.datasources.list` into the `grafana-datasources` ConfigMap |
+| `charts/`                 | *Generated* — vendored subchart tgz via `helm dependency update .` |
+| `Chart.lock`              | *Generated* — pinned dependency digests |
+
+The three subchart deps are **not committed**. `helm dependency update .` (see [§3](#3-deploy)) fetches them and writes `charts/` + `Chart.lock`; without it `helm install` fails with `found in Chart.yaml, but missing in charts/ directory`.
+
+### Resources
+
 | Resource | Name | Purpose |
 |---|---|---|
 | Grafana Deployment | `grafana` | The UI (service `grafana:80` → `3000`) |
@@ -101,6 +130,34 @@ kubectl get svc -n observability
 | Valkey Deployment | `grafana-valkey` | Remote cache / session store (service `grafana-valkey:6379`) |
 | ConfigMap | `grafana-datasources` | Datasource definitions, auto-loaded by sidecar |
 | Secrets | `grafana-admin-credentials`, `grafana-postgresql` | Credentials (see section 2) |
+
+> **`fullnameOverride` is deliberate here.** `values.yaml` sets `fullnameOverride: grafana-valkey` and `grafana-postgresql` to pin those two resource names, because the `grafana.ini` database host and `remote_cache` connstr below — plus the datasource URLs — reference them literally. Unlike Tempo and Loki, where the READMEs warn never to set `fullnameOverride` after the first install, here it is set on purpose from the start. Don't "clean it up": removing either override renames the resource and breaks every hard-coded FQDN above.
+
+### Running against external Postgres / Valkey
+
+Each subchart is gated by a `condition` in `Chart.yaml`, so any bundled dependency can be turned off and pointed at a managed one instead:
+
+```yaml
+# values-external.yaml — bring your own database and cache
+postgres:
+  enabled: false
+valkey:
+  enabled: false
+grafana:
+  grafana.ini:
+    database:
+      host: my-managed-postgres.observability.svc.cluster.local:5432
+    remote_cache:
+      connstr: addr=my-managed-valkey.observability.svc.cluster.local:6379,pool_size=100,db=0
+```
+
+| Toggle | Default | Effect |
+|---|---|---|
+| `grafana.enabled` | `true` | The Grafana UI itself — rarely disabled |
+| `valkey.enabled`   | `true` | Bundled Valkey. `false` ⇒ no cache; Grafana still runs |
+| `postgres.enabled` | `true` | Bundled Postgres. `false` ⇒ supply `grafana.ini` `database.host` + credentials yourself |
+
+All three default to `true` in `values.yaml`. Note `datasources.enabled` (top-level) is unrelated — it gates the ConfigMap render in `templates/datasource.yaml`, not a subchart.
 
 Grafana's `grafana.ini` is wired to:
 
@@ -213,7 +270,7 @@ helm upgrade --install grafana . -n observability -f values.yaml -f values-prod.
 
 ### Adding other datasources (ClickHouse, MySQL, Elasticsearch, ...)
 
-The datasource template (`templates/datasources.yaml`) is **generic** — no template changes needed to add any datasource type. Beyond `name` / `uid` / `type` / `url` / `isDefault`, every entry supports:
+The datasource template (`templates/datasource.yaml`) is **generic** — no template changes needed to add any datasource type. Beyond `name` / `uid` / `type` / `url` / `isDefault`, every entry supports:
 
 | Field | Purpose |
 |---|---|

@@ -1,0 +1,423 @@
+collector:
+  mode: deployment
+  fullnameOverride: otel-collector-collector
+  image:
+    repository: quay.io/opstree/opentelemetry-collector
+    tag: "0.150.1-debian13-contrib"
+    pullPolicy: IfNotPresent
+  command:
+    name: otelcol-contrib
+  serviceAccount:
+    create: true
+    name: otel-collector-collector
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 200m
+      # [OPT-1] Increase memory limit to prevent OOMKills during traffic spikes, matches LDC live dump
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 250Mi
+  tolerations:
+    - key: "workload"
+      operator: "Equal"
+      value: "observability"
+      effect: "NoSchedule"
+  priorityClassName: ""
+  podSecurityContext: {}
+  securityContext: {}
+  affinity: {}
+  useGOMEMLIMIT: true
+  clusterRole:
+    create: true
+    rules:
+      - apiGroups: [""]
+        resources: ["pods", "namespaces"]
+        verbs: ["get", "watch", "list"]
+      - apiGroups: ["apps"]
+        resources: ["replicasets"]
+        verbs: ["get", "list", "watch"]
+  ports:
+    otlp:
+      enabled: true
+      containerPort: 4317
+      servicePort: 4317
+      protocol: TCP
+    otlp-http:
+      enabled: true
+      containerPort: 4318
+      servicePort: 4318
+      protocol: TCP
+    health-check:
+      enabled: true
+      containerPort: 13133
+      servicePort: 13133
+      protocol: TCP
+    metrics:
+      enabled: true
+      containerPort: 8889
+      servicePort: 8889
+      protocol: TCP
+  service:
+    type: ClusterIP
+    annotations: {}
+  serviceMonitor:
+    enabled: true
+    metricsEndpoints:
+      - port: metrics
+        interval: 30s
+        path: /metrics
+    extraLabels:
+      release: kube-prometheus-stack
+    relabelings: []
+    metricRelabelings: []
+    sampleLimit: 0
+  podMonitor:
+    enabled: false
+  podDisruptionBudget:
+    enabled: false
+  autoscaling:
+    enabled: false
+
+  alternateConfig:
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+        path: /
+    connectors:
+      servicegraph:
+        latency_histogram_buckets: [100ms, 250ms, 1s, 5s, 10s]
+        dimensions:
+          - http.method
+          - http.target
+        store:
+          max_items: 500
+          ttl: 5s
+        virtual_node_extra_label: true
+        virtual_node_peer_attributes:
+          - db.name
+          - db.system
+          - messaging.system
+          - peer.service
+      spanmetrics:
+        histogram:
+          explicit:
+            buckets: [100ms, 250ms, 500ms, 1s, 5s, 10s]
+        dimensions:
+          - name: rpc.grpc.status_code
+          - name: rpc.service
+          - name: rpc.system
+          - name: rpc.method
+          - name: http.method
+          - name: http.status_code
+          - name: http.response.status_code
+          - default: /
+            name: http.route
+          - default: UNKNOWN
+            name: BU
+          - name: rems_app_dev_owner
+          - name: rems_app_manager_owner
+          - name: rems_app_qa_owner
+          - name: rems_app_severity
+          - name: rems_application_group
+          - name: rems_category
+          - name: rems_environment
+          - name: rems_service
+          - name: rems_type
+          - name: rems_technology
+        dimensions_cache_size: 1000
+        # [OPT-4] Reduce metric cardinality — only rems dims needed as resource key attributes
+        resource_metrics_key_attributes:
+          - rems_app_dev_owner
+          - rems_app_manager_owner
+          - rems_app_qa_owner
+          - rems_app_severity
+          - rems_application_group
+          - rems_category
+          - rems_environment
+          - rems_service
+          - rems_type
+          - rems_technology
+          - rems_app_owner_cto
+          - rems_app_owner_devops
+        events:
+          dimensions:
+            - name: exception.type
+            - name: exception.message
+          enabled: false
+        # [OPT-2] Disable exemplars — no benefit with prometheusremotewrite, adds metric cardinality
+        exemplars:
+          enabled: false
+        metrics_expiration: 5m
+        metrics_flush_interval: 15s
+    exporters:
+      debug:
+        verbosity: detailed
+      otlp:
+        compression: snappy
+        endpoint: tempo-distributor:4317
+        retry_on_failure:
+          enabled: true
+        sending_queue:
+          enabled: true
+          num_consumers: 10
+          queue_size: 5000
+        timeout: 30s
+        tls:
+          insecure: true
+      otlphttp:
+        endpoint: http://logging-loki-gateway.logging.svc.cluster.local/otlp
+      prometheusremotewrite:
+        endpoint: http://vminsert-vm.monitoring.svc:8480/insert/0/prometheus/api/v1/write
+        max_batch_size_bytes: 3000000
+        remote_write_queue:
+          enabled: true
+          queue_size: 100000
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_elapsed_time: 300s
+          max_interval: 30s
+        timeout: 300s
+        tls:
+          insecure_skip_verify: true
+    processors:
+      attributes:
+        actions:
+          - action: extract
+            key: http.url
+            pattern: "^(?P<domain>https?://[^/]+)(?P<base_path>(?:/[^/?\\.]+)+)(?:/[^/?]+\\.[a-zA-Z0-9]+)?(?:\\?.*)?$"
+      attributes/metrics:
+        actions:
+          - action: extract
+            key: span.name
+            pattern: "^(?P<temp_url>[A-Z]+\\s+\\/[^? ]*)"
+      batch:
+        send_batch_max_size: 0
+        send_batch_size: 3000000
+        timeout: 15s
+      batch/tempo:
+        send_batch_max_size: 128
+        send_batch_size: 64
+        timeout: 1s
+      k8sattributes/span:
+        auth_type: serviceAccount
+        passthrough: false
+        extract:
+          metadata:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.deployment.name
+          annotations:
+            - tag_name: rems_app_dev_owner
+              key: rems.owner/dev
+              from: pod
+            - tag_name: rems_app_manager_owner
+              key: rems.owner/manager
+              from: pod
+            - tag_name: rems_app_qa_owner
+              key: rems.owner/qa
+              from: pod
+            - tag_name: rems_app_severity
+              key: rems.service/severity
+              from: pod
+            - tag_name: rems_application_group
+              key: rems.service/group
+              from: pod
+            - tag_name: rems_category
+              key: rems.service/category
+              from: pod
+            - tag_name: rems_environment
+              key: rems.service/environment
+              from: pod
+            - tag_name: rems_service
+              key: rems.service/name
+              from: pod
+            - tag_name: rems_technology
+              key: rems.service/technology
+              from: pod
+            - tag_name: rems_type
+              key: rems.service/layer
+              from: pod
+            - tag_name: rems_app_owner_cto
+              key: rems.owner/cto
+              from: pod
+            - tag_name: rems_app_owner_devops
+              key: rems.owner/devops
+              from: pod
+          labels:
+            - tag_name: rems_app_dev_owner
+              key: rems/app-dev-owner
+              from: pod
+            - tag_name: rems_app_manager_owner
+              key: rems/app-manager-owner
+              from: pod
+            - tag_name: rems_app_qa_owner
+              key: rems/app-qa-owner
+              from: pod
+            - tag_name: rems_app_severity
+              key: rems/app-severity
+              from: pod
+            - tag_name: rems_application_group
+              key: rems/application_group
+              from: pod
+            - tag_name: rems_category
+              key: rems/category
+              from: pod
+            - tag_name: rems_environment
+              key: rems/environment
+              from: pod
+            - tag_name: rems_service
+              key: rems/service
+              from: pod
+            - tag_name: rems_technology
+              key: rems/technology
+              from: pod
+            - tag_name: rems_type
+              key: rems/type
+              from: pod
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.name
+              - from: resource_attribute
+                name: k8s.namespace.name
+          - sources:
+              - from: resource_attribute
+                name: k8s.deployment.name
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 70
+        spike_limit_percentage: 10
+      tail_sampling:
+        decision_wait: 60s
+        policies:
+          - name: error-policy
+            status_code:
+              status_codes: [ERROR]
+            type: status_code
+          - name: latency-policy
+            latency:
+              threshold_ms: 500
+            type: latency
+          - name: probabilistic
+            probabilistic:
+              sampling_percentage: 10
+            type: probabilistic
+      transform:
+        trace_statements:
+          # [OPT-3] Copy rems attributes from resource to span — enables span-level filtering in Tempo
+          - set(span.attributes["rems_app_dev_owner"], resource.attributes["rems_app_dev_owner"])
+          - set(span.attributes["rems_app_manager_owner"], resource.attributes["rems_app_manager_owner"])
+          - set(span.attributes["rems_app_qa_owner"], resource.attributes["rems_app_qa_owner"])
+          - set(span.attributes["rems_app_severity"], resource.attributes["rems_app_severity"])
+          - set(span.attributes["rems_application_group"], resource.attributes["rems_application_group"])
+          - set(span.attributes["rems_category"], resource.attributes["rems_category"])
+          - set(span.attributes["rems_environment"], resource.attributes["rems_environment"])
+          - set(span.attributes["rems_service"], resource.attributes["rems_service"])
+          - set(span.attributes["rems_technology"], resource.attributes["rems_technology"])
+          - set(span.attributes["rems_type"], resource.attributes["rems_type"])
+          - set(span.attributes["rems_app_owner_cto"], resource.attributes["rems_app_owner_cto"])
+          - set(span.attributes["rems_app_owner_devops"], resource.attributes["rems_app_owner_devops"])
+          - set(span.name, span.attributes["base_path"])
+          - replace_pattern(span.attributes["http.route"], "[a-zA-Z0-9\\-]{8,}(\\?\\=/|$)", ":id")
+          - keep_keys(resource.attributes, ["service.name", "service.namespace", "process.command", "k8s.namespace.name", "rems_app_dev_owner", "rems_app_manager_owner", "rems_app_qa_owner", "rems_app_severity", "rems_application_group", "rems_category", "rems_environment", "rems_service", "rems_type", "rems_technology", "rems_app_owner_cto", "rems_app_owner_devops"])
+      transform/metrics:
+        metric_statements:
+          - context: datapoint
+            statements:
+              - set(attributes["http.status_code"], attributes["http.response.status_code"])
+              - set(attributes["http.method"], attributes["http.request.method"])
+              - set(attributes["span.name"], attributes["temp_url"])
+              - replace_pattern(attributes["span.name"], "[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}", "{:UUID}")
+              - replace_pattern(attributes["span.name"], "[^/]+?\\.(gif|webp|js|css|png|jpg|jpeg|svg|ico|woff2?|ttf|map)$", "")
+              - delete_key(attributes, "temp_url")
+              - delete_key(attributes, "instance")
+              - delete_key(attributes, "http.request.method")
+              - delete_key(attributes, "http.response.status_code")
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: app-otelcol-metrics
+              scrape_interval: 10s
+              static_configs:
+                - targets:
+                    - 127.0.0.1:8889
+    service:
+      extensions:
+        - health_check
+      pipelines:
+        logs:
+          exporters:
+            - otlphttp
+            # [OPT-6] Add debug exporter to logs — helps troubleshooting log pipeline issues
+            - debug
+          processors:
+            - memory_limiter
+            # [OPT-7] Enrich log entries with k8s metadata (namespace, pod, deployment)
+            - k8sattributes/span
+            - batch
+          receivers:
+            - otlp
+        metrics:
+          exporters:
+            - prometheusremotewrite
+          processors:
+            - memory_limiter
+            - attributes/metrics
+            - transform/metrics
+            # [OPT-8] Needed for http.url domain/base_path extraction in metrics
+            - attributes
+            - batch
+          receivers:
+            - otlp
+            - prometheus
+            - spanmetrics
+            - servicegraph
+        traces:
+          exporters:
+            - otlp
+          processors:
+            - memory_limiter
+            - tail_sampling
+            - k8sattributes/span
+            - transform
+            # [OPT-5] Remove redundant attributes processor — transform already handles base_path extraction
+            - batch/tempo
+          receivers:
+            - otlp
+        traces/metrics:
+          exporters:
+            - spanmetrics
+            - servicegraph
+          processors:
+            - memory_limiter
+            - k8sattributes/span
+            - batch/tempo
+          receivers:
+            - otlp
+      telemetry:
+        metrics:
+          level: detailed
+          readers:
+            - pull:
+                exporter:
+                  prometheus:
+                    host: 127.0.0.1
+                    port: 8889
+        # [OPT-9] Remove broken config — env vars never injected without extraEnvs, LDC live dump doesn't have this
+
+# Infra metrics (optional - enable if needed)
+kubeStateMetrics:
+  enabled: false
+
+nodeExporter:
+  enabled: false

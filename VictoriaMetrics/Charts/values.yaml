@@ -1,0 +1,304 @@
+# ==============================================================================
+# values.yaml for chart "vm-stack"
+# Deploy AFTER vm-operator chart. Operator sub-chart disabled (already
+# running from vm-operator release).
+# ==============================================================================
+
+vm:
+  enabled: true
+  fullnameOverride: "vm"
+
+  victoria-metrics-operator:
+    enabled: false
+
+  vmsingle:
+    enabled: false
+
+  vmcluster:
+    enabled: true
+    spec:
+      retentionPeriod: 14d
+      replicationFactor: 1
+
+      vmstorage:
+        replicaCount: 2
+        extraArgs:
+          search.maxUniqueTimeseries: "10000000000000"
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: "0.5"
+            memory: 1Gi
+        storage:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: "longhorn-restricted"
+              resources:
+                requests:
+                  storage: 20Gi
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: vmstorage
+                topologyKey: kubernetes.io/hostname
+
+      vmselect:
+        enabled: true
+        replicaCount: 2
+        extraArgs:
+          memory.allowedPercent: "75"
+          search.cacheTimestampOffset: 60m
+          search.maxLabelsAPISeries: "10000000000000"
+          search.maxMemoryPerQuery: 2GB
+          search.maxPointsPerTimeseries: "10000000000000"
+          search.maxQueryDuration: 10m
+          search.maxQueryLen: "10000000000000"
+          search.maxSeries: "10000000000000"
+          search.maxUniqueTimeseries: "10000000000000"
+          vmalert.proxyURL: "http://vmalert-vm.monitoring.svc.cluster.local.:8080"
+        cacheMountPath: "/select-cache"
+        storage:
+          volumeClaimTemplate:
+            spec:
+              resources:
+                requests:
+                  storage: 1Gi
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: vmselect
+                topologyKey: kubernetes.io/hostname
+
+      vminsert:
+        enabled: true
+        replicaCount: 2
+        configMaps:
+          - vminsert-relabel-config
+        extraArgs:
+          maxLabelsPerTimeseries: "100"
+          relabelConfig: /etc/vm/configs/vminsert-relabel-config/relabel.yaml
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: vminsert
+                topologyKey: kubernetes.io/hostname
+
+  alertmanager:
+    enabled: false
+
+  vmalert:
+    enabled: true
+    spec:
+      selectAllByDefault: true
+      evaluationInterval: 15s
+      image:
+        repository: quay.io/opstree/victoriametrics-vmalert
+        tag: "v1.141.0"
+      notifiers:
+        - url: http://alertmanager-0.alertmanager-headless:9093
+        - url: http://alertmanager-1.alertmanager-headless:9093
+      extraArgs:
+        http.pathPrefix: "/"
+        remoteWrite.disablePathAppend: "true"
+
+  vmagent:
+    enabled: true
+    spec:
+      selectAllByDefault: false
+      serviceScrapeNamespaceSelector: {}
+      scrapeInterval: 30s
+      image:
+        repository: quay.io/opstree/victoriametrics-vmagent
+        tag: "v1.141.0"
+      extraArgs:
+        promscrape.maxScrapeSize: 200MB
+        promscrape.dropOriginalLabels: "true"
+        remoteWrite.label: cluster=base-vcluster,env=prod,dc=hercules
+      useVMConfigReloader: true
+      serviceScrapeSelector:
+        matchExpressions:
+          - key: external
+            operator: NotIn
+            values: ["true"]
+      podScrapeSelector:
+        matchExpressions:
+          - key: external
+            operator: NotIn
+            values: ["true"]
+      probeSelector:
+        matchExpressions:
+          - key: external
+            operator: NotIn
+            values: ["true"]
+      nodeScrapeSelector:
+        matchExpressions:
+          - key: external
+            operator: NotIn
+            values: ["true"]
+      staticScrapeSelector:
+        matchExpressions:
+          - key: external
+            operator: NotIn
+            values: ["true"]
+      scrapeConfigSelector:
+        matchExpressions:
+          - key: external
+            operator: NotIn
+            values: ["true"]
+
+  kube-state-metrics:
+    enabled: false
+    fullnameOverride: "vm-kube-state-metrics"
+    image:
+      registry: quay.io
+      repository: opstree/kube-state-metrics
+      tag: "2.18.0-debian13"
+    extraArgs:
+      - --metric-labels-allowlist=pods=[*]
+      - --metric-annotations-allowlist=pods=[*]
+      - --resources=certificatesigningrequests,configmaps,cronjobs,daemonsets,deployments,endpointslices,horizontalpodautoscalers,ingresses,jobs,leases,limitranges,mutatingwebhookconfigurations,namespaces,networkpolicies,nodes,persistentvolumeclaims,persistentvolumes,poddisruptionbudgets,pods,replicasets,replicationcontrollers,resourcequotas,secrets,services,statefulsets,storageclasses,validatingwebhookconfigurations,volumeattachments
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+      port: 8080
+      targetPort: http-metrics
+    rbac:
+      create: true
+    serviceAccount:
+      create: true
+      name: "kube-sa"
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 8080
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 8080
+      initialDelaySeconds: 20
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+    vmScrape:
+      enabled: true
+      spec:
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: '{{ include "kube-state-metrics.name" (index .Subcharts "kube-state-metrics") }}'
+            app.kubernetes.io/instance: '{{ include "vm.release" . }}'
+        endpoints:
+          - port: http
+            honorLabels: true
+            metricRelabelConfigs:
+              - action: labeldrop
+                regex: (uid|container_id|image_id)
+              - action: labelmap
+                regex: label_(rems_.+)
+              - action: labeldrop
+                regex: label_rems_.+
+        jobLabel: app.kubernetes.io/name
+
+  defaultRules:
+    create: false
+  grafana:
+    enabled: false
+  defaultDashboards:
+    enabled: false
+
+  prometheus-node-exporter:
+    enabled: true
+    fullnameOverride: "vm-prometheus-node-exporter"
+    image:
+      registry: quay.io
+      repository: opstree/node-exporter
+      tag: "1.11.1-alpine3.23"
+    spec:
+      jobLabel: jobLabel
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: '{{ include "prometheus-node-exporter.name" (index .Subcharts "prometheus-node-exporter") }}'
+      endpoints:
+        - port: metrics
+          metricRelabelConfigs:
+            - action: drop
+              source_labels: [mountpoint]
+              regex: "/var/lib/kubelet/pods.+"
+
+  kubeApiServer:
+    enabled: false
+  kubeControllerManager:
+    enabled: false
+
+  extraObjects:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: vminsert-relabel-config
+        namespace: monitoring
+      data:
+        relabel.yaml: |
+          - action: drop
+            source_labels: [interface]
+            regex: lxc[0-9a-f]{12,}
+
+          - action: drop
+            source_labels: [__name__]
+            regex: '(grafana_http_response_size_bytes_bucket|grafana_apiserver_request_duration_seconds_bucket|grafana_apiserver_request_sli_duration_seconds_bucket|grafana_apiserver_request_slo_duration_seconds_bucket|grafana_grpc_authz_limited_client_batch_check_duration_seconds_bucket|grafana_feature_toggles_info|grafana_plugin_request_duration_seconds_bucket|grafana_apiserver_request_body_size_bytes_bucket|grafana_plugin_request_duration_milliseconds_bucket|grafana_plugin_request_size_bytes_bucket|grafana_caching_query_caching_request_duration_seconds_bucket|grafana_access_resource_permissions_backend_total|grafana_http_request_duration_seconds_sum|grafana_http_response_size_bytes_count|grafana_http_response_size_bytes_sum|grafana_apiserver_watch_list_duration_seconds_bucket|grafana_caching_resource_caching_request_duration_seconds_bucket|etcd_bookmark_total|tempodb_backend_request_duration_seconds_bucket|kine_sql_time_seconds_bucket|pg_freeze_age_freeze_age|node_systemd_socket_accepted_connections_total|node_systemd_socket_current_connections|node_systemd_socket_refused_connections_total|node_memory_VmallocUsed_bytes|node_timex_pps_jitter_seconds|node_selinux_enabled|node_sockstat_FRAG6_inuse|node_netstat_TcpExt_TCPTimeouts|node_hwmon_temp_celsius|node_hwmon_temp_crit_celsius|vm_promscrape_scrapers_started_total|kube_persistentvolume_claim_ref|kube_persistentvolume_volume_mode|kube_persistentvolumeclaim_access_mode|kube_persistentvolume_created|loki_ingester_chunk_size_bytes_bucket|apiserver_impersonation_authorization_attempts_duration_seconds_bucket|apiserver_watch_cache_events_received_total|jvm_memory_pool_bytes_max|informer_processing_latency_seconds_bucket|informer_processing_latency_seconds_count|informer_processing_latency_seconds_sum|informer_queued_items)'
+
+    - apiVersion: operator.victoriametrics.com/v1beta1
+      kind: VMAgent
+      metadata:
+        name: ldc-agent
+        namespace: monitoring
+        labels:
+          app.kubernetes.io/component: vm-vmagent
+          app.kubernetes.io/instance: vm
+          app.kubernetes.io/name: vm
+      spec:
+        image:
+          repository: quay.io/opstree/victoriametrics-vmagent
+          tag: "v1.141.0"
+        port: "8429"
+        scrapeInterval: 30s
+        selectAllByDefault: false
+        license: {}
+        externalLabels: {}
+        useVMConfigReloader: true
+        remoteWrite:
+          - url: "http://vminsert-vm.monitoring.svc.cluster.local.:8480/insert/0/prometheus/api/v1/write"
+        extraArgs:
+          promscrape.dropOriginalLabels: "true"
+          promscrape.maxScrapeSize: 200MB
+          promscrape.streamParse: "true"
+        serviceScrapeNamespaceSelector: {}
+        serviceScrapeSelector:
+          matchLabels:
+            external: "true"
+        podScrapeSelector:
+          matchLabels:
+            external: "true"
+        probeSelector:
+          matchLabels:
+            external: "true"
+        nodeScrapeSelector:
+          matchLabels:
+            external: "true"
+        staticScrapeSelector:
+          matchLabels:
+            external: "true"
+        scrapeConfigSelector:
+          matchLabels:
+            external: "true"

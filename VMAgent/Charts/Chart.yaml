@@ -1,0 +1,5 @@
+apiVersion: v2
+name: vmagent
+version: 0.1.0
+appVersion: "v1.141.0"
+description: Standalone VMAgent for vcluster monitoring. Scrapes KSM and remote-writes to central VictoriaMetrics.

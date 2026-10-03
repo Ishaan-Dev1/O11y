@@ -1,0 +1,94 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: coe-dev-otel-instrumentation
+  namespace: observability
+spec:
+  exporter:
+    endpoint: http://otel-collector-collector.rems.svc.cluster.local:4317
+  propagators:
+    - tracecontext
+    - baggage
+    - b3
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1"
+  resource:
+    addK8sUIDAttributes: true
+  java:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:1.33.6
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  nodejs:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-nodejs:0.58.0
+    resourceRequirements:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  python:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-python:0.62b1
+    resourceRequirements:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://otel-collector-collector.rems.svc.cluster.local:4318
+      - name: OTEL_PYTHON_EXCLUDED_URLS
+        value: .*/healthz,.*/health, .*/readyz
+  dotnet:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-dotnet:1.2.0
+    resourceRequirements:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://otel-collector-collector.rems.svc.cluster.local:4318
+  go:
+    image: ghcr.io/open-telemetry/opentelemetry-go-instrumentation/autoinstrumentation-go:v0.19.0-alpha
+    resourceRequirements:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://otel-collector-collector.rems.svc.cluster.local:4318
+  apacheHttpd:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-apache-httpd:1.0.4
+    configPath: /usr/local/apache2/conf
+    version: "2.4"
+    resourceRequirements:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 1m
+        memory: 128Mi
+  nginx:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-apache-httpd:1.0.4
+    configFile: /etc/nginx/nginx.conf
+    resourceRequirements:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 1m
+        memory: 128Mi

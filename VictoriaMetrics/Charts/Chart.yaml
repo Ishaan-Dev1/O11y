@@ -1,0 +1,16 @@
+apiVersion: v2
+name: vm-stack
+version: 0.5.0
+appVersion: "v1.141.0"
+description: >
+  VictoriaMetrics stack (VMCluster, VMAgent x2, VMAlert, kube-state-metrics,
+  node-exporter), for ldc production cutover.
+
+dependencies:
+  - name: victoria-metrics-k8s-stack
+    version: "0.75.0"
+    repository: https://victoriametrics.github.io/helm-charts/
+    condition: vm.enabled
+    alias: vm
+    tags:
+      - monitoring

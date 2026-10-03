@@ -1,0 +1,9 @@
+# ==============================================================================
+# values-ksm.yaml
+# Layer this on top of values.yaml for clusters that need kube-state-metrics.
+# helm upgrade --install vm-stack . -f values.yaml -f values-ksm.yaml
+# ==============================================================================
+
+vm:
+  kube-state-metrics:
+    enabled: true

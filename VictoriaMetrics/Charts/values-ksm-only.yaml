@@ -1,0 +1,42 @@
+# ==============================================================================
+# values-ksm-only.yaml
+# Use this for clusters where only kube-state-metrics needs to be deployed.
+# Operator must already be running on the cluster.
+#
+# helm upgrade --install vm-stack . -f values.yaml -f values-ksm-only.yaml -n monitoring
+# ==============================================================================
+
+vm:
+  victoria-metrics-operator:
+    enabled: false
+
+  vmcluster:
+    enabled: false
+
+  vmsingle:
+    enabled: false
+
+  vmalert:
+    enabled: false
+
+  vmagent:
+    enabled: false
+
+  alertmanager:
+    enabled: false
+
+  prometheus-node-exporter:
+    enabled: false
+
+  defaultRules:
+    create: false
+
+  grafana:
+    enabled: false
+
+  extraObjects: []
+
+  kube-state-metrics:
+    enabled: true
+    vmScrape:
+      enabled: false
