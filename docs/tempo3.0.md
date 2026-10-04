@@ -76,25 +76,19 @@ You now manage replication for traces in Kafka. Use RF3 with `min.insync.replica
 - **TraceQL AST optimization:** repeated conditions are rewritten automatically.
 - **MCP server:** can be enabled with a dedicated flag.
 
-## 6. Breaking changes and migration
+## 6. Migration impact
 
-**Removed:** ingesters, compactors, local-blocks processor, v2 block format, OpenCensus receiver, scalable single binary target.
+Tempo 3.0 introduces several architectural breaking changes:
 
-**Query semantics:** `!=` now means NOT IN and `!~` means MATCH NONE. Review complex TraceQL queries first.
+- **Ingester and compactor are removed** and replaced by Kafka-based ingestion,
+  block-builders, and backend workers.
+- **Kafka becomes a required dependency for distributed deployments.**
+- **RF3 trace replication moves from Tempo ingesters to Kafka.**
+- **Local-blocks are removed** as part of the TraceQL metrics architecture.
+- **v2 blocks are replaced by vParquet5.**
+- Existing Tempo 2.x configurations must be migrated to the new architecture
+  using `tempo-cli migrate config`.
+- Complex TraceQL queries should be reviewed because `!=` and `!~` semantics
+  have changed.
 
-**TraceQL metrics:** old RF3 blocks stay readable for search and trace-by-ID, but TraceQL metrics only read RF1 blocks. Without local-blocks on 2.x, metrics cover only data ingested after the upgrade.
 
-**Config migration:**
-
-```
-# monolithic
-tempo-cli migrate config old-config.yaml > new-config.yaml
-
-# microservices
-tempo-cli migrate config \
-  --kafka-address=<KAFKA_BROKER_ADDRESS> \
-  --kafka-topic=<YOUR_TOPIC> \
-  old-config.yaml > new-config.yaml
-```
-
-This removes the `ingester`, `ingester_client` and `compactor` config sections and the local-blocks processor, adds Kafka (microservices only), and disables compaction during parallel migration.
