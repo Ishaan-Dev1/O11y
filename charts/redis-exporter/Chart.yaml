@@ -1,0 +1,11 @@
+apiVersion: v2
+name: redis-exporter
+description: A Helm chart for Redis monitoring
+type: application
+version: 0.1.0
+appVersion: v1.80.1
+dependencies:
+  - name: prometheus-redis-exporter
+    alias: redis-exporter
+    version: 6.20.1
+    repository: https://prometheus-community.github.io/helm-charts
