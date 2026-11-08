@@ -1,0 +1,36 @@
+redis-exporter:
+  redisAddress: "redis://redis-master.middleware.svc.cluster.local:6379"
+
+  auth:
+    enabled: true
+    secret:
+      name: "redis"
+      key: "redis-password"
+
+  serviceMonitor:
+    enabled: true
+    multipleTarget: true
+    interval: 15s
+    scrapeTimeout: 10s
+    targets:
+      - url: "redis://redis-master.middleware.svc.cluster.local:6379"
+        name: "redis"
+        additionalRelabeling:
+          - targetLabel: rems_app_dev_owner
+            replacement: "abhishek.dubey"
+          - targetLabel: rems_app_manager_owner
+            replacement: "sandeep"
+          - targetLabel: rems_app_qa_owner
+            replacement: "shwetabh.vats"
+          - targetLabel: rems_app_severity
+            replacement: "critical"
+          - targetLabel: rems_application_group
+            replacement: "Demo"
+          - targetLabel: rems_category
+            replacement: "application"
+          - targetLabel: rems_environment
+            replacement: "prod"
+          - targetLabel: rems_service
+            replacement: "redis-demo"
+          - targetLabel: db_type
+            replacement: "redis"
