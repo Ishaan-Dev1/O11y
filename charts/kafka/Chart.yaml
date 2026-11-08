@@ -1,0 +1,10 @@
+apiVersion: v2
+name: kafka-wrapper
+description: Kafka wrapper chart (only kafka + jmx-exporter)
+type: application
+version: 0.1.0
+ 
+dependencies:
+  - name: kafka
+    version: "26.3.1"
+    repository: https://charts.bitnami.com/bitnami
