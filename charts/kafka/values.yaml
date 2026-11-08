@@ -1,0 +1,128 @@
+#################################
+# CRITICAL FIX (BROKER COUNT)
+#################################
+replicaCount: 1   
+
+#################################
+#  IMPORTANT (TOP LEVEL FIX)
+#################################
+kraft:
+  enabled: false
+
+zookeeper:
+  enabled: false
+
+externalZookeeper:
+  servers:
+    - zookeeper.middleware.svc.cluster.local:2181
+
+
+#################################
+#  ORIGINAL CONFIG
+#################################
+
+kafka:
+
+  #################################
+  #  ALSO KEEP HERE (SAFE)
+  #################################
+  replicaCount: 1
+  broker:
+   replicaCount: 1
+
+  #################################
+  #  REQUIRED FIX (ZK MODE)
+  #################################
+  controller:
+    replicaCount: 0
+
+
+  kraft:
+    enabled: false  
+
+  zookeeper:
+    enabled: false   
+    replicaCount: 1 
+    persistence:
+      enabled: true
+      size: 1Gi 
+
+  externalZookeeper:
+    servers:
+      - zookeeper.middleware.svc.cluster.local:2181
+
+  image:
+    registry: docker.io
+    repository: bitnami/kafka
+    tag: 3.6.1-debian-11-r0
+
+  extraEnvVars:
+    - name: ALLOW_PLAINTEXT_LISTENER
+      value: "yes"
+
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+  persistence:
+    enabled: true
+    size: 2Gi
+
+  tolerations:
+    - operator: "Exists"
+
+  listeners:
+    client:
+      containerPort: 9092
+      protocol: PLAINTEXT
+      name: CLIENT
+
+    interbroker:
+      containerPort: 9094
+      protocol: PLAINTEXT
+      name: INTERNAL
+
+  config: |
+    offsets.topic.replication.factor=1
+    transaction.state.log.replication.factor=1
+    transaction.state.log.min.isr=1
+    default.replication.factor=1
+    min.insync.replicas=1
+
+  metrics:
+    jmx:
+      enabled: true
+      kafkaJmxPort: 5555
+      image:
+        registry: docker.io
+        repository: bitnami/jmx-exporter
+        tag: 0.19.0-debian-11-r0
+      containerPorts:
+        metrics: 5556
+      service:
+        ports:
+          metrics: 5556
+
+    serviceMonitor:
+      enabled: false
+      path: /metrics
+      interval: "30s"
+
+  defaultInitContainers:
+    volumePermissions:
+      enabled: false
+    autoDiscovery:
+      enabled: false
+
+  rbac:
+    create: false
+
+  serviceAccount:
+    create: false
+
+  externalAccess:
+    enabled: false
