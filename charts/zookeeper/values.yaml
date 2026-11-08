@@ -1,0 +1,59 @@
+zookeeper:
+  replicaCount: 1   # dev setup (cluster me 3 karna)
+
+  image: 
+   registry: docker.io
+   repository: bitnamilegacy/zookeeper
+   tag: 3.9.3-debian-12-r22
+
+
+  auth:
+   client:
+    enabled: false
+
+  allowAnonymousLogin: true
+
+
+  persistence:
+   enabled: true
+   size: 1Gi
+
+
+  resources:
+   requests:
+     cpu: "100m"
+     memory: "256Mi"
+   limits:
+     cpu: "300m"
+     memory: "512Mi"
+
+
+  service:
+   type: ClusterIP
+   ports:
+    client: 2181
+
+
+  networkPolicy:
+   enabled: false
+
+
+  metrics:
+   enabled: true
+
+  service:
+     port: 9141
+     annotations:
+       prometheus.io/scrape: "true"
+       prometheus.io/port: "9141"
+       prometheus.io/path: "/metrics"
+
+  serviceMonitor:
+     enabled: true
+     interval: 30s
+
+
+  podManagementPolicy: Parallel
+
+  volumePermissions:
+   enabled: false
