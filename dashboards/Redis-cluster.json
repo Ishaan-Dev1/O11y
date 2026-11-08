@@ -1,0 +1,2055 @@
+{
+    "annotations": {
+        "list": [
+            {
+                "builtIn": 1,
+                "datasource": {
+                    "type": "datasource",
+                    "uid": "grafana"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "type": "dashboard"
+            }
+        ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": 0,
+    "links": [],
+    "panels": [
+        {
+            "collapsed": true,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "id": 40,
+            "panels": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Returns the cluster health status",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "thresholds"
+                            },
+                            "mappings": [
+                                {
+                                    "options": {
+                                        "0": {
+                                            "index": 1,
+                                            "text": "DOWN"
+                                        },
+                                        "1": {
+                                            "index": 0,
+                                            "text": "UP"
+                                        }
+                                    },
+                                    "type": "value"
+                                }
+                            ],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 4,
+                        "w": 6,
+                        "x": 0,
+                        "y": 1
+                    },
+                    "id": 21,
+                    "options": {
+                        "colorMode": "value",
+                        "graphMode": "none",
+                        "justifyMode": "auto",
+                        "orientation": "auto",
+                        "percentChangeColorMode": "standard",
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": "",
+                            "values": false
+                        },
+                        "showPercentChange": false,
+                        "textMode": "auto",
+                        "wideLayout": true
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "editorMode": "code",
+                            "expr": "max(redis_cluster_state{rems_application_group=\"$application_group\",rems_service=\"$service\"})",
+                            "legendFormat": "Redis Cluster health",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Redis Cluster Health",
+                    "type": "stat"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Returns the total uptime (in seconds) of all Redis instances combined for the selected application group and service.",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "thresholds"
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    }
+                                ]
+                            },
+                            "unit": "s"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 4,
+                        "w": 6,
+                        "x": 6,
+                        "y": 1
+                    },
+                    "id": 24,
+                    "options": {
+                        "minVizHeight": 75,
+                        "minVizWidth": 75,
+                        "orientation": "auto",
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": "",
+                            "values": false
+                        },
+                        "showThresholdLabels": false,
+                        "showThresholdMarkers": true,
+                        "sizing": "auto"
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "editorMode": "code",
+                            "expr": "sum(redis_uptime_in_seconds{rems_application_group=\"$application_group\",rems_service=\"$service\"})",
+                            "legendFormat": "Cluster Uptime",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Cluster Uptime",
+                    "type": "gauge"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Returns the current number of connected clients per Redis instance for the selected application group and service.",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "continuous-GrYlRd"
+                            },
+                            "custom": {
+                                "axisPlacement": "auto",
+                                "fillOpacity": 100,
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "insertNulls": false,
+                                "lineWidth": 0,
+                                "spanNulls": false
+                            },
+                            "mappings": [
+                                {
+                                    "options": {
+                                        "0": {
+                                            "color": "#C8F2C2"
+                                        },
+                                        "1": {
+                                            "color": "#FA6400"
+                                        },
+                                        "2": {
+                                            "color": "#73BF69"
+                                        },
+                                        "N/A": {
+                                            "color": "#CCC"
+                                        },
+                                        "null": {
+                                            "color": "#CCC",
+                                            "text": "N/A"
+                                        }
+                                    },
+                                    "type": "value"
+                                },
+                                {
+                                    "options": {
+                                        "result": {
+                                            "color": "#CCC",
+                                            "text": "N/A"
+                                        }
+                                    },
+                                    "type": "range"
+                                }
+                            ],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            },
+                            "unit": "short"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 1
+                    },
+                    "id": 33,
+                    "options": {
+                        "alignValue": "left",
+                        "legend": {
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "mergeValues": true,
+                        "rowHeight": 0.9,
+                        "showValue": "auto",
+                        "tooltip": {
+                            "hideZeros": false,
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "victoriametrics"
+                            },
+                            "editorMode": "code",
+                            "expr": "(redis_connected_clients{rems_application_group=~\"$application_group\",\n    rems_service=~\"$service\"})",
+                            "interval": "",
+                            "legendFormat": "{{ pod }}",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Connected Clients",
+                    "type": "state-timeline"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Returns the number of Redis instances reporting cluster size metrics.",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "thresholds"
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 4,
+                        "w": 6,
+                        "x": 0,
+                        "y": 276
+                    },
+                    "id": 2,
+                    "options": {
+                        "colorMode": "value",
+                        "graphMode": "none",
+                        "justifyMode": "auto",
+                        "orientation": "auto",
+                        "percentChangeColorMode": "standard",
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": "",
+                            "values": false
+                        },
+                        "showPercentChange": false,
+                        "text": {},
+                        "textMode": "auto",
+                        "wideLayout": true
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "ffgdrley9fpj4c"
+                            },
+                            "editorMode": "code",
+                            "expr": "count(redis_cluster_size{rems_application_group=\"$application_group\", rems_service=\"$service\"})",
+                            "instant": false,
+                            "legendFormat": "Cluster Nodes",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Redis Cluster Nodes",
+                    "type": "stat"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Returns the maximum cluster size (number of master nodes) observed across the selected Redis cluster.",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "thresholds"
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 4,
+                        "w": 6,
+                        "x": 6,
+                        "y": 276
+                    },
+                    "id": 23,
+                    "options": {
+                        "colorMode": "value",
+                        "graphMode": "none",
+                        "justifyMode": "auto",
+                        "orientation": "auto",
+                        "percentChangeColorMode": "standard",
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": "",
+                            "values": false
+                        },
+                        "showPercentChange": false,
+                        "textMode": "auto",
+                        "wideLayout": true
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "editorMode": "code",
+                            "expr": "max(redis_cluster_size{rems_application_group=\"$application_group\",rems_service=\"$service\"})",
+                            "legendFormat": "Number of Master Nodes in the cluster",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Redis Cluster Size",
+                    "type": "stat"
+                }
+            ],
+            "title": "Overview",
+            "type": "row"
+        },
+        {
+            "collapsed": true,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 1
+            },
+            "id": 37,
+            "panels": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Returns the number of replica (slave) nodes connected to each Redis master instance",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "continuous-GrYlRd"
+                            },
+                            "custom": {
+                                "axisPlacement": "auto",
+                                "fillOpacity": 100,
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "insertNulls": false,
+                                "lineWidth": 0,
+                                "spanNulls": false
+                            },
+                            "mappings": [
+                                {
+                                    "options": {
+                                        "0": {
+                                            "color": "#C8F2C2"
+                                        },
+                                        "1": {
+                                            "color": "#FA6400"
+                                        },
+                                        "2": {
+                                            "color": "#73BF69"
+                                        },
+                                        "N/A": {
+                                            "color": "#CCC"
+                                        },
+                                        "null": {
+                                            "color": "#CCC",
+                                            "text": "N/A"
+                                        }
+                                    },
+                                    "type": "value"
+                                },
+                                {
+                                    "options": {
+                                        "result": {
+                                            "color": "#CCC",
+                                            "text": "N/A"
+                                        }
+                                    },
+                                    "type": "range"
+                                }
+                            ],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            },
+                            "unit": "short"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 2
+                    },
+                    "id": 32,
+                    "options": {
+                        "alignValue": "left",
+                        "legend": {
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "mergeValues": true,
+                        "rowHeight": 0.9,
+                        "showValue": "auto",
+                        "tooltip": {
+                            "hideZeros": false,
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "victoriametrics"
+                            },
+                            "editorMode": "code",
+                            "expr": "(redis_connected_slaves{rems_application_group=~\"$application_group\",\n    rems_service=~\"$service\"})",
+                            "interval": "",
+                            "legendFormat": "{{ pod }}",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Connected Slaves",
+                    "type": "state-timeline"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "fixedColor": "green",
+                                "mode": "fixed"
+                            },
+                            "mappings": [
+                                {
+                                    "options": {
+                                        "master": {
+                                            "index": 0,
+                                            "text": "Master"
+                                        }
+                                    },
+                                    "type": "value"
+                                }
+                            ],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 4,
+                        "w": 6,
+                        "x": 12,
+                        "y": 2
+                    },
+                    "id": 12,
+                    "options": {
+                        "colorMode": "value",
+                        "graphMode": "none",
+                        "justifyMode": "center",
+                        "orientation": "horizontal",
+                        "percentChangeColorMode": "standard",
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": "",
+                            "values": false
+                        },
+                        "showPercentChange": false,
+                        "textMode": "name",
+                        "wideLayout": true
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "victoriametrics"
+                            },
+                            "editorMode": "code",
+                            "expr": "max by (role) (redis_instance_info{rems_application_group=\"$application_group\", rems_service=~\"$service\", pod=\"$pod\"})",
+                            "instant": true,
+                            "legendFormat": "{{role}}",
+                            "range": false,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Redis Role",
+                    "type": "stat"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Returns the replication lag (in seconds) between Redis master and its connected replicas for the selected instance.",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "thresholds"
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            },
+                            "unit": "s"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 4,
+                        "w": 6,
+                        "x": 18,
+                        "y": 2
+                    },
+                    "id": 17,
+                    "options": {
+                        "colorMode": "value",
+                        "graphMode": "none",
+                        "justifyMode": "auto",
+                        "orientation": "auto",
+                        "percentChangeColorMode": "standard",
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": "",
+                            "values": false
+                        },
+                        "showPercentChange": false,
+                        "textMode": "auto",
+                        "wideLayout": true
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "ffgdrley9fpj4c"
+                            },
+                            "editorMode": "code",
+                            "exemplar": true,
+                            "expr": "(redis_connected_slave_lag_seconds{rems_application_group=~\"$application_group\",\n    rems_service=~\"$service\", pod=\"$pod\"})",
+                            "instant": false,
+                            "legendFormat": "Replication Lag",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Redis Replication Lag",
+                    "type": "stat"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Returns the maximum number of cluster bus connections observed across Redis cluster nodes",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "thresholds"
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 4,
+                        "w": 6,
+                        "x": 12,
+                        "y": 57
+                    },
+                    "id": 22,
+                    "options": {
+                        "colorMode": "value",
+                        "graphMode": "none",
+                        "justifyMode": "auto",
+                        "orientation": "auto",
+                        "percentChangeColorMode": "standard",
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": "",
+                            "values": false
+                        },
+                        "showPercentChange": false,
+                        "textMode": "auto",
+                        "wideLayout": true
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "editorMode": "code",
+                            "expr": "max(redis_cluster_connections{rems_application_group=\"$application_group\",rems_service=\"$service\"})",
+                            "legendFormat": "Cluster Bus Connections",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Cluster bus connections",
+                    "type": "stat"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Returns the uptime (in seconds) of the specific Redis instance",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "thresholds"
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    }
+                                ]
+                            },
+                            "unit": "s"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 4,
+                        "w": 6,
+                        "x": 18,
+                        "y": 57
+                    },
+                    "id": 41,
+                    "options": {
+                        "minVizHeight": 75,
+                        "minVizWidth": 75,
+                        "orientation": "auto",
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": "",
+                            "values": false
+                        },
+                        "showThresholdLabels": false,
+                        "showThresholdMarkers": true,
+                        "sizing": "auto"
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "editorMode": "code",
+                            "expr": "redis_uptime_in_seconds{rems_application_group=\"$application_group\",rems_service=\"$service\",pod=\"$pod\"}",
+                            "legendFormat": "{{pod}}",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Instance Uptime",
+                    "type": "gauge"
+                }
+            ],
+            "title": "Redis Replication Overview",
+            "type": "row"
+        },
+        {
+            "collapsed": true,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 2
+            },
+            "id": 39,
+            "panels": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Returns the average execution time per Redis command (by command type)",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisBorderShow": false,
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "barWidthFactor": 0.6,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "insertNulls": false,
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "showValues": false,
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            },
+                            "unit": "s"
+                        },
+                        "overrides": [
+                            {
+                                "__systemRef": "hideSeriesFrom",
+                                "matcher": {
+                                    "id": "byNames",
+                                    "options": {
+                                        "mode": "exclude",
+                                        "names": [
+                                            "slowlog|len"
+                                        ],
+                                        "prefix": "All except:",
+                                        "readOnly": true
+                                    }
+                                },
+                                "properties": [
+                                    {
+                                        "id": "custom.hideFrom",
+                                        "value": {
+                                            "legend": false,
+                                            "tooltip": true,
+                                            "viz": true
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 3
+                    },
+                    "id": 13,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "right",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "hideZeros": false,
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "ffgdrley9fpj4c"
+                            },
+                            "editorMode": "code",
+                            "exemplar": true,
+                            "expr": "avg(irate(redis_commands_duration_seconds_total{rems_application_group=\"$application_group\",rems_service=~\"$service\", pod=\"$pod\"}[$__rate_interval])) by (cmd) / avg(irate(redis_commands_total{rems_application_group=\"$application_group\",rems_service=~\"$service\", pod=\"$pod\"}[$__rate_interval])) by (cmd)",
+                            "instant": false,
+                            "legendFormat": "{{cmd}}",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Redis Command Latency",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Shows the number of commands processed by Redis per second, calculated using the rate of the total commands counter",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisBorderShow": false,
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "Commands/sec",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "barWidthFactor": 0.6,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "insertNulls": false,
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "showValues": false,
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "decimals": 1,
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "#EAB839",
+                                        "value": 10
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 30
+                                    }
+                                ]
+                            },
+                            "unit": "ops"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 3
+                    },
+                    "id": 29,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "hideZeros": false,
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "${DATASOURCE}"
+                            },
+                            "editorMode": "code",
+                            "exemplar": false,
+                            "expr": "rate(redis_commands_processed_total{rems_application_group=~\"$application_group\",\r\n    rems_service=~\"$service\",pod=\"$pod\"}[$__rate_interval])",
+                            "format": "table",
+                            "instant": false,
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Redis Commands Per Second",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Measures the memory usage by Redis in bytes.",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisBorderShow": false,
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "barWidthFactor": 0.6,
+                                "drawStyle": "line",
+                                "fillOpacity": 10,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "insertNulls": false,
+                                "lineInterpolation": "linear",
+                                "lineWidth": 2,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "never",
+                                "showValues": false,
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "min": 0,
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            },
+                            "unit": "decbytes"
+                        },
+                        "overrides": [
+                            {
+                                "__systemRef": "hideSeriesFrom",
+                                "matcher": {
+                                    "id": "byNames",
+                                    "options": {
+                                        "mode": "exclude",
+                                        "names": [
+                                            "Peak Memory"
+                                        ],
+                                        "prefix": "All except:",
+                                        "readOnly": true
+                                    }
+                                },
+                                "properties": [
+                                    {
+                                        "id": "custom.hideFrom",
+                                        "value": {
+                                            "legend": false,
+                                            "tooltip": true,
+                                            "viz": true
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "gridPos": {
+                        "h": 7,
+                        "w": 12,
+                        "x": 0,
+                        "y": 11
+                    },
+                    "id": 30,
+                    "options": {
+                        "legend": {
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "displayMode": "table",
+                            "placement": "right",
+                            "showLegend": true,
+                            "sortBy": "Name",
+                            "sortDesc": true
+                        },
+                        "tooltip": {
+                            "hideZeros": false,
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "${DATASOURCE}"
+                            },
+                            "editorMode": "code",
+                            "expr": "sum(redis_memory_used_bytes{rems_application_group=~\"$application_group\",\n    rems_service=~\"$service\",pod=\"$pod\"})",
+                            "legendFormat": "Used Memory",
+                            "range": true,
+                            "refId": "A"
+                        },
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "${DATASOURCE}"
+                            },
+                            "editorMode": "code",
+                            "expr": "sum(redis_memory_used_peak_bytes{rems_application_group=~\"$application_group\",\n    rems_service=~\"$service\",pod=\"$pod\"})",
+                            "legendFormat": "Peak Memory",
+                            "range": true,
+                            "refId": "B"
+                        },
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "${DATASOURCE}"
+                            },
+                            "editorMode": "code",
+                            "expr": "sum(redis_memory_used_rss_bytes{rems_application_group=~\"$application_group\",\n    rems_service=~\"$service\",pod=\"$pod\"})",
+                            "legendFormat": "RSS Memory",
+                            "range": true,
+                            "refId": "C"
+                        }
+                    ],
+                    "title": "Memory Usage",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "CPU usage by Redis, broken down by system and user time.",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisBorderShow": false,
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "barWidthFactor": 0.6,
+                                "drawStyle": "line",
+                                "fillOpacity": 10,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "insertNulls": false,
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "showValues": false,
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            },
+                            "unit": "s"
+                        },
+                        "overrides": [
+                            {
+                                "__systemRef": "hideSeriesFrom",
+                                "matcher": {
+                                    "id": "byNames",
+                                    "options": {
+                                        "mode": "exclude",
+                                        "names": [
+                                            "Sys CPU"
+                                        ],
+                                        "prefix": "All except:",
+                                        "readOnly": true
+                                    }
+                                },
+                                "properties": [
+                                    {
+                                        "id": "custom.hideFrom",
+                                        "value": {
+                                            "legend": false,
+                                            "tooltip": true,
+                                            "viz": true
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "gridPos": {
+                        "h": 7,
+                        "w": 12,
+                        "x": 12,
+                        "y": 11
+                    },
+                    "id": 46,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "hideZeros": false,
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "${DATASOURCE}"
+                            },
+                            "editorMode": "code",
+                            "expr": "sum(rate(redis_cpu_sys_seconds_total{rems_application_group=~\"$application_group\",\n    rems_service=~\"$service\",pod=\"$pod\"}[$__rate_interval]))",
+                            "legendFormat": "Sys CPU",
+                            "range": true,
+                            "refId": "A"
+                        },
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "${DATASOURCE}"
+                            },
+                            "editorMode": "code",
+                            "expr": "sum(rate(redis_cpu_user_seconds_total{rems_application_group=~\"$application_group\",\n    rems_service=~\"$service\",pod=\"$pod\"}[$__rate_interval]))",
+                            "legendFormat": "User CPU",
+                            "range": true,
+                            "refId": "B"
+                        }
+                    ],
+                    "title": "CPU Usage Rate",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Shows Redis key lifecycle activity by displaying expired and evicted keys per second",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisBorderShow": false,
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "barWidthFactor": 0.6,
+                                "drawStyle": "line",
+                                "fillOpacity": 10,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "insertNulls": false,
+                                "lineInterpolation": "linear",
+                                "lineWidth": 2,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "showValues": false,
+                                "spanNulls": true,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            },
+                            "unit": "ops"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 7,
+                        "w": 12,
+                        "x": 0,
+                        "y": 18
+                    },
+                    "id": 48,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "hideZeros": false,
+                            "mode": "multi",
+                            "sort": "none"
+                        }
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "expr": "rate(redis_expired_keys_total{rems_application_group=~\"$application_group\", rems_service=~\"$service\", pod=\"$pod\"}[$__rate_interval])",
+                            "legendFormat": "Expired/sec",
+                            "range": true,
+                            "refId": "A"
+                        },
+                        {
+                            "expr": "rate(redis_evicted_keys_total{rems_application_group=~\"$application_group\", rems_service=~\"$service\", pod=\"$pod\"}[$__rate_interval])",
+                            "legendFormat": "Evicted/sec",
+                            "range": true,
+                            "refId": "B"
+                        }
+                    ],
+                    "title": "Redis Keys: Expired & Evicted",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Shows Redis cache performance by displaying hits/sec, misses/sec, and hit ratio (%) to evaluate cache efficiency.",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisBorderShow": false,
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "barWidthFactor": 0.6,
+                                "drawStyle": "line",
+                                "fillOpacity": 10,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "insertNulls": false,
+                                "lineInterpolation": "linear",
+                                "lineWidth": 2,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "never",
+                                "showValues": false,
+                                "spanNulls": true,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            },
+                            "unit": "ops"
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {
+                                    "id": "byName",
+                                    "options": "Hit Rate %"
+                                },
+                                "properties": [
+                                    {
+                                        "id": "unit",
+                                        "value": "percentunit"
+                                    },
+                                    {
+                                        "id": "custom.axisPlacement",
+                                        "value": "right"
+                                    },
+                                    {
+                                        "id": "custom.lineWidth",
+                                        "value": 3
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "gridPos": {
+                        "h": 7,
+                        "w": 12,
+                        "x": 12,
+                        "y": 18
+                    },
+                    "id": 49,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "hideZeros": false,
+                            "mode": "multi",
+                            "sort": "none"
+                        }
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "expr": "rate(redis_keyspace_hits_total{rems_application_group=\"$application_group\", rems_service=\"$service\", pod=\"$pod\"}[$__rate_interval])",
+                            "legendFormat": "Hits/sec",
+                            "range": true,
+                            "refId": "A"
+                        },
+                        {
+                            "expr": "rate(redis_keyspace_misses_total{rems_application_group=\"$application_group\", rems_service=\"$service\", pod=\"$pod\"}[$__rate_interval])",
+                            "legendFormat": "Misses/sec",
+                            "range": true,
+                            "refId": "B"
+                        },
+                        {
+                            "editorMode": "code",
+                            "expr": "rate(redis_keyspace_hits_total{rems_application_group=~\"$application_group\",\r\n    rems_service=~\"$service\"}[$__rate_interval]) / (rate(redis_keyspace_hits_total{rems_application_group=~\"$application_group\",\r\n    rems_service=~\"$service\"}[$__rate_interval]) + rate(redis_keyspace_misses_total{rems_application_group=~\"$application_group\",\r\n    rems_service=~\"$service\"}[$__rate_interval])) * 100",
+                            "legendFormat": "Hit Rate %",
+                            "range": true,
+                            "refId": "C"
+                        }
+                    ],
+                    "title": "Hits / Misses & Hit Ratio",
+                    "type": "timeseries"
+                }
+            ],
+            "title": "Performance",
+            "type": "row"
+        },
+        {
+            "collapsed": true,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 3
+            },
+            "id": 38,
+            "panels": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Rate of incoming and outgoing network traffic.",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisBorderShow": false,
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "axisSoftMax": 1000,
+                                "axisSoftMin": 0,
+                                "barAlignment": 0,
+                                "barWidthFactor": 0.6,
+                                "drawStyle": "line",
+                                "fillOpacity": 10,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "insertNulls": false,
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "showValues": false,
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            },
+                            "unit": "B/s"
+                        },
+                        "overrides": [
+                            {
+                                "__systemRef": "hideSeriesFrom",
+                                "matcher": {
+                                    "id": "byNames",
+                                    "options": {
+                                        "mode": "exclude",
+                                        "names": [
+                                            "Output"
+                                        ],
+                                        "prefix": "All except:",
+                                        "readOnly": true
+                                    }
+                                },
+                                "properties": [
+                                    {
+                                        "id": "custom.hideFrom",
+                                        "value": {
+                                            "legend": false,
+                                            "tooltip": true,
+                                            "viz": true
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "gridPos": {
+                        "h": 7,
+                        "w": 8,
+                        "x": 0,
+                        "y": 48
+                    },
+                    "id": 34,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "hideZeros": false,
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "${DATASOURCE}"
+                            },
+                            "editorMode": "code",
+                            "expr": "rate((redis_net_input_bytes_total{rems_application_group=~\"$application_group\",\n    rems_service=~\"$service\",pod=\"$pod\"}[$__rate_interval]))",
+                            "legendFormat": "Input",
+                            "range": true,
+                            "refId": "A"
+                        },
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "${DATASOURCE}"
+                            },
+                            "editorMode": "code",
+                            "expr": "rate((redis_net_output_bytes_total{rems_application_group=~\"$application_group\",\n    rems_service=~\"$service\",pod=\"$pod\"}[$__rate_interval]))",
+                            "legendFormat": "Output",
+                            "range": true,
+                            "refId": "B"
+                        }
+                    ],
+                    "title": "Network I/O",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Displays memory consumed by client output.",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisBorderShow": false,
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "barWidthFactor": 0.6,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "insertNulls": false,
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "showValues": false,
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            },
+                            "unit": "B/s"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 7,
+                        "w": 8,
+                        "x": 8,
+                        "y": 48
+                    },
+                    "id": 36,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "hideZeros": false,
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "${DATASOURCE}"
+                            },
+                            "editorMode": "code",
+                            "expr": "(redis_client_recent_max_output_buffer_bytes{rems_application_group=\"$application_group\",rems_service=\"$service\",pod=\"$pod\"})[$__rate_interval]",
+                            "legendFormat": "Output",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Client Output Buffer",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "victoriametrics"
+                    },
+                    "description": "Rate of incoming network traffic.",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisBorderShow": false,
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "barWidthFactor": 0.6,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "insertNulls": false,
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "showValues": false,
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": 0
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            },
+                            "unit": "B/s"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 7,
+                        "w": 8,
+                        "x": 16,
+                        "y": 48
+                    },
+                    "id": 35,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "table",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "hideZeros": false,
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "pluginVersion": "12.4.0-19913286788",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "${DATASOURCE}"
+                            },
+                            "editorMode": "code",
+                            "expr": "(redis_client_recent_max_input_buffer_bytes{rems_application_group=\"$application_group\",rems_service=\"$service\",pod=\"$pod\"})[$__rate_interval]",
+                            "format": "time_series",
+                            "legendFormat": "Input",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Client Input Buffer",
+                    "type": "timeseries"
+                }
+            ],
+            "title": "Network",
+            "type": "row"
+        }
+    ],
+    "preload": false,
+    "schemaVersion": 42,
+    "tags": [
+        "ot-dashboard",
+        "ot-redis-cluster"
+    ],
+    "templating": {
+        "list": [
+            {
+                "current": {
+                    "text": "Demo",
+                    "value": "Demo"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "victoriametrics"
+                },
+                "definition": "label_values(redis_cluster_enabled,rems_application_group)",
+                "label": "ApplicationGroup",
+                "name": "application_group",
+                "options": [],
+                "query": {
+                    "qryType": 1,
+                    "query": "label_values(redis_cluster_enabled,rems_application_group)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 1,
+                "regex": "",
+                "type": "query"
+            },
+            {
+                "current": {
+                    "text": "redis-cluster-demo",
+                    "value": "redis-cluster-demo"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "victoriametrics"
+                },
+                "definition": "label_values(redis_cluster_enabled,rems_service)",
+                "label": "Service",
+                "name": "service",
+                "options": [],
+                "query": {
+                    "qryType": 1,
+                    "query": "label_values(redis_cluster_enabled,rems_service)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 1,
+                "regex": "",
+                "type": "query"
+            },
+            {
+                "current": {
+                    "text": "redis-cluster-leader-1",
+                    "value": "redis-cluster-leader-1"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "victoriametrics"
+                },
+                "definition": "label_values(redis_cluster_enabled{rems_service=\"$service\"},pod)",
+                "label": "Instance",
+                "name": "pod",
+                "options": [],
+                "query": {
+                    "qryType": 1,
+                    "query": "label_values(redis_cluster_enabled{rems_service=\"$service\"},pod)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 1,
+                "regex": "",
+                "type": "query"
+            },
+            {
+                "current": {
+                    "text": "slave",
+                    "value": "slave"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "victoriametrics"
+                },
+                "definition": "label_values(redis_instance_info{pod=\"$pod\"},role)",
+                "hide": 2,
+                "label": "Role",
+                "name": "role",
+                "options": [],
+                "query": {
+                    "qryType": 1,
+                    "query": "label_values(redis_instance_info{pod=\"$pod\"},role)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 1,
+                "regex": "",
+                "type": "query"
+            }
+        ]
+    },
+    "time": {
+        "from": "now-5m",
+        "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Redis Cluster Dashboard",
+    "uid": "OsAINfZnk",
+    "version": 54
+}
