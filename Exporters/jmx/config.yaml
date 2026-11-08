@@ -1,0 +1,213 @@
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+whitelistObjectNames:
+  - "kafka.server:*"
+  - "kafka.controller:*"
+  - "kafka.network:*"
+  - "kafka.log:*"
+  - "kafka.cluster:*"
+  - "kafka.coordinator.group:*"
+  - "kafka.coordinator.transaction:*"
+  - "kafka.coordinator.quota:*"
+  - "kafka.utils:*"
+  - "kafka.raft:*"
+  - "org.apache.kafka.raft:*"
+  - "org.apache.kafka.controller:*"
+  - "org.apache.kafka.storage.internals.log:*"
+  - "java.lang:*"
+  - "java.nio:*"
+
+rules:
+
+# =========================================================
+# 🔴 ControllerStats (CRITICAL)
+# =========================================================
+
+- pattern: kafka.controller<type=ControllerStats, name=UncleanLeaderElectionsPerSec><>Count
+  name: kafka_controller_controllerstats_uncleanleaderelectionspersec
+  type: COUNTER
+
+- pattern: kafka.controller<type=ControllerStats, name=UncleanLeaderElectionsPerSec><>(OneMinuteRate|FiveMinuteRate|FifteenMinuteRate|MeanRate)
+  name: kafka_controller_controllerstats_uncleanleaderelectionspersec
+  type: GAUGE
+  labels:
+    rate: "$1"
+
+- pattern: kafka.controller<type=ControllerStats, name=LeaderElectionRateAndTimeMs><>Count
+  name: kafka_controller_leaderelection_total
+  type: COUNTER
+
+- pattern: kafka.controller<type=ControllerStats, name=LeaderElectionRateAndTimeMs><>(OneMinuteRate|FiveMinuteRate|FifteenMinuteRate|MeanRate)
+  name: kafka_controller_leaderelection_rate
+  type: GAUGE
+  labels:
+    rate: "$1"
+
+# =========================================================
+# 🧠 Controller Core
+# =========================================================
+
+- pattern: kafka.controller<type=KafkaController, name=(.+)><>Value
+  name: kafka_controller_$1
+  type: GAUGE
+
+# =========================================================
+# 📊 ISR / Replication
+# =========================================================
+
+- pattern: kafka.server<type=ReplicaManager, name=IsrShrinksPerSec><>Count
+  name: kafka_server_isr_shrinks_total
+  type: COUNTER
+
+- pattern: kafka.server<type=ReplicaManager, name=IsrExpandsPerSec><>Count
+  name: kafka_server_isr_expands_total
+  type: COUNTER
+
+- pattern: kafka.server<type=ReplicaManager, name=UnderReplicatedPartitions><>Value
+  name: kafka_server_under_replicated_partitions
+  type: GAUGE
+
+# =========================================================
+# 🔥 Topic-wise Throughput (IMPORTANT)
+# =========================================================
+
+- pattern: kafka.server<type=BrokerTopicMetrics, name=(BytesInPerSec|BytesOutPerSec|MessagesInPerSec), topic=(.+)><>Count
+  name: kafka_server_brokertopicmetrics_$1_total
+  type: COUNTER
+  labels:
+    topic: "$2"
+
+- pattern: kafka.server<type=BrokerTopicMetrics, name=(BytesInPerSec|BytesOutPerSec|MessagesInPerSec), topic=(.+)><>(OneMinuteRate|FiveMinuteRate|FifteenMinuteRate|MeanRate)
+  name: kafka_server_brokertopicmetrics_$1
+  type: GAUGE
+  labels:
+    topic: "$2"
+    rate: "$3"
+
+# =========================================================
+# 🚀 Cluster Throughput (no topic)
+# =========================================================
+
+- pattern: kafka.server<type=BrokerTopicMetrics, name=(BytesInPerSec|BytesOutPerSec|MessagesInPerSec)><>Count
+  name: kafka_server_$1_total
+  type: COUNTER
+
+- pattern: kafka.server<type=BrokerTopicMetrics, name=(BytesInPerSec|BytesOutPerSec|MessagesInPerSec)><>(OneMinuteRate|FiveMinuteRate|FifteenMinuteRate|MeanRate)
+  name: kafka_server_$1
+  type: GAUGE
+  labels:
+    rate: "$2"
+
+# =========================================================
+# 🌐 Request Metrics (FIXED)
+# =========================================================
+
+- pattern: kafka.network<type=RequestMetrics, name=RequestsPerSec, request=(.+)><>Count
+  name: kafka_network_requests_total
+  type: COUNTER
+  labels:
+    request: "$1"
+
+- pattern: kafka.network<type=RequestMetrics, name=TotalTimeMs, request=(.+)><>(Count|Mean|Max|Min)
+  name: kafka_network_request_time_ms
+  type: GAUGE
+  labels:
+    request: "$1"
+    stat: "$2"
+
+# =========================================================
+# 🔥 Request Latency Breakdown (FIXED)
+# =========================================================
+
+- pattern: kafka.network<type=RequestMetrics, name=RequestQueueTimeMs, request=(.+).*><>Value
+  name: kafka_network_requestmetrics_requestqueuetimems
+  type: GAUGE
+  labels:
+    request: "$1"
+
+- pattern: kafka.network<type=RequestMetrics, name=LocalTimeMs, request=(.+).*><>Value
+  name: kafka_network_requestmetrics_localtimems
+  type: GAUGE
+  labels:
+    request: "$1"
+
+- pattern: kafka.network<type=RequestMetrics, name=RemoteTimeMs, request=(.+).*><>Value
+  name: kafka_network_requestmetrics_remotetimems
+  type: GAUGE
+  labels:
+    request: "$1"
+
+- pattern: kafka.network<type=RequestMetrics, name=ResponseQueueTimeMs, request=(.+).*><>Value
+  name: kafka_network_requestmetrics_responsequeuetimems
+  type: GAUGE
+  labels:
+    request: "$1"
+
+- pattern: kafka.network<type=RequestMetrics, name=ResponseSendTimeMs, request=(.+).*><>Value
+  name: kafka_network_requestmetrics_responsesendtimems
+  type: GAUGE
+  labels:
+    request: "$1"
+# =========================================================
+# ⏳ Purgatory
+# =========================================================
+
+- pattern: kafka.server<type=DelayedOperationPurgatory, name=PurgatorySize, delayedOperation=(.+)><>Value
+  name: kafka_server_purgatory_size
+  type: GAUGE
+  labels:
+    operation: "$1"
+
+# =========================================================
+# 🪵 Log Metrics
+# =========================================================
+
+- pattern: kafka.log<type=Log, name=Size, topic=(.+), partition=(.+)><>Value
+  name: kafka_log_size
+  type: GAUGE
+  labels:
+    topic: "$1"
+    partition: "$2"
+
+# =========================================================
+# 🧠 Raft
+# =========================================================
+
+- pattern: kafka.server<type=raft-metrics><>(.+)
+  name: kafka_server_raft_$1
+  type: GAUGE
+
+# =========================================================
+# 📊 Cluster Partition
+# =========================================================
+
+- pattern: kafka.cluster<type=Partition, name=(.+), topic=(.+), partition=(.+)><>Value
+  name: kafka_cluster_partition_$1
+  type: GAUGE
+  labels:
+    topic: "$2"
+    partition: "$3"
+
+# =========================================================
+# ⚡ Performance
+# =========================================================
+
+- pattern: kafka.server<type=KafkaRequestHandlerPool, name=RequestHandlerAvgIdlePercent><>Value
+  name: kafka_server_request_handler_idle_percent
+  type: GAUGE
+
+
+- pattern: java.lang<type=Memory><(\w+)MemoryUsage>(\w+)
+  name: jvm_memory_$1_$2_bytes
+  type: GAUGE
+
+- pattern: java.lang<type=GarbageCollector, name=(.+)><>(CollectionCount|CollectionTime)
+  name: jvm_gc_$2
+  type: COUNTER
+  labels:
+    gc: "$1"
+
+- pattern: java.lang<type=Threading><>(ThreadCount|DaemonThreadCount)
+  name: jvm_threads_$1
+  type: GAUGE
