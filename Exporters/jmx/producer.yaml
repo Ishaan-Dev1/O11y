@@ -1,0 +1,37 @@
+startDelaySeconds: 0
+ssl: false
+
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+
+- pattern: kafka.producer<type=producer-metrics, client-id=(.+)><>request-rate
+  name: kafka_producer_request_rate
+  type: GAUGE
+  labels:
+    client_id: "$1"
+
+- pattern: kafka.producer<type=producer-metrics, client-id=(.+)><>request-latency-avg
+  name: kafka_producer_request_latency_avg
+  type: GAUGE
+  labels:
+    client_id: "$1"
+
+- pattern: kafka.producer<type=producer-metrics, client-id=(.+)><>request-latency-max
+  name: kafka_producer_request_latency_max
+  type: GAUGE
+  labels:
+    client_id: "$1"
+
+- pattern: kafka.producer<type=producer-metrics, client-id=(.+)><>outgoing-byte-rate
+  name: kafka_producer_outgoing_byte_rate
+  type: GAUGE
+  labels:
+    client_id: "$1"
+
+- pattern: kafka.producer<type=producer-metrics, client-id=(.+)><>batch-size-avg
+  name: kafka_producer_batch_size_avg
+  type: GAUGE
+  labels:
+    client_id: "$1"
