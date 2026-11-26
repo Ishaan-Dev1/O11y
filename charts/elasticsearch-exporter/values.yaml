@@ -1,0 +1,75 @@
+elasticsearchexporter:
+
+  replicaCount: 1
+
+  image:
+    repository: quay.io/prometheuscommunity/elasticsearch-exporter
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  es:
+    uri: http://elasticsearch-master.database.svc.cluster.local:9200 #need to add the correct url for the es pods http://<service-name>.<namespace>.svc.cluster.local:<port>
+    all: true
+    indices: true
+    indices_settings: true
+    indices_mappings: true
+    shards: true
+    snapshots: true
+    cluster_settings: false
+    timeout: 30s
+    sslSkipVerify: false
+    ssl:
+      enabled: false
+
+  resources: {}
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+  service:
+    type: ClusterIP
+    httpPort: 9108
+    annotations: {}
+
+  serviceMonitor:
+    enabled: false
+    # namespace: monitoring
+    # interval: 10s
+    # scrapeTimeout: 10s
+    # labels: {}
+
+  prometheusRule:
+    enabled: false
+    # namespace: monitoring
+    # labels: {}
+    # rules: []
+
+# add the password
+  extraEnvSecrets:
+    ES_PASSWORD:
+      secret: elasticsearch-master-credentials
+      key: password
+
+  extraArgs: []
+  #  - --es.indices_mappings
+
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
